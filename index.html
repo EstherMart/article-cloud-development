@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+    <title>Repositório de Artigos</title>
+</head>
+<body>
+ <header>
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar-brand">
+                Repositório de Artigos
+            </a>
+
+            <div class="d-flex">
+                <a href="login.html" class="btn btn-outline-primary">
+                Login
+                </a>
+                <a href="cadastro.html" class="btn btn-outline-primary">
+                cadastro
+                </a>
+                <a href="perfil.html" class="btn btn-outline-primary">
+                perfil
+                </a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main>
+    <section class="home container text-center">
+
+        <h1 class="aplicacao">
+            Repositório de Artigos
+        </h1>
+
+        <p class="descricao">
+            Encontre e explore artigos acadêmicos de forma rápida e fácil.
+        </p>
+
+        <form action="artigos.html" method="get" class="search-box d-flex">
+            <input
+                type="search"
+                name="busca"
+                class="form-control"
+                placeholder="Pesquise por artigos..."
+                aria-label="Pesquisar artigos"
+            >
+
+            <button type="submit" class="btn btn-primary">
+                Pesquisar
+            </button>
+        </form>
+
+        <a href="meus_artigos.html" class="btn btn-secondary mt-3">
+            Meus Artigos
+        </a>
+
+    </section>
+</main>
+</body>
+</html>
