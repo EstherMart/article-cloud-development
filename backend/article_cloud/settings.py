@@ -79,6 +79,17 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+# aqui ficará o RDS quando nós configurarmos ele: 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'article_db', <- nome do banco de dados qu criamos
+#         'USER': 'postgres', <- usuario 
+#         'PASSWORD': 'senha', <- senha
+#         'HOST': 'seu-rds.amazonaws.com', <- isso é o host que será gerado
+#         'PORT': '5432', <- configuramos a porta
+#     }
+# }
 
 
 # Password validation
