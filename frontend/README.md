@@ -24,5 +24,3 @@ Telas estáticas em HTML com Bootstrap e CSS próprio. Não há build: abra os a
 - Definir a URL base da API em um único lugar (por exemplo `js/config.js`), para trocar entre local e o ALB.
 - O back não tem login ainda. Decidir como a autenticação funciona antes de ligar `login.html` e `cadastro.html`.
 - Se o front for aberto de outra origem que a API, o back precisará de CORS.
-
-A spec desconta 1,0 ponto se não houver interface gráfica.
