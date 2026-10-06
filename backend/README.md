@@ -12,11 +12,19 @@ backend/
 ├── article_cloud/        configuração do projeto (settings, urls, wsgi)
 └── articles/             app principal
     ├── models.py         Article, Tag, Author
-    ├── views.py          rotas da API
-    └── urls.py           mapa de rotas
+    ├── views.py          rotas da API (só orquestram)
+    ├── urls.py           mapa de rotas
+    └── services/         uma camada fina por serviço AWS (ver services/README.md)
+        ├── aws.py            clientes boto3
+        ├── s3.py             PDF
+        ├── dynamo_log.py     log de CRUD
+        ├── cache.py          Redis
+        └── messaging.py      SNS
 ```
 
-Quando o código crescer, a integração com a AWS entra em `articles/services/`, um módulo por serviço (`s3.py`, `dynamo_log.py`, `cache.py`, `sns.py`). As views só orquestram. Assim cada branch `feat/...` mexe em arquivos diferentes e há menos conflito.
+`services/` tem só o esqueleto: assinaturas, regras e como implementar, em comentários. As views chamam essas funções e não falam com a AWS diretamente. Cada branch `feat/...` mexe em um arquivo diferente.
+
+Crescimento previsto: quando `views.py` ficar grande, vira o pacote `views/` e ganha `validators.py`. A autenticação (login, cadastro, perfil) vai para um app `accounts` quando o grupo decidir como será.
 
 ## Rotas
 
