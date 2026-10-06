@@ -49,6 +49,12 @@ class Article(models.Model):
     )
     area = models.CharField(max_length=255)
 
+    # resumo digitado no cadastro; o worker grava a tradução em translated_abstract
+    abstract = models.TextField(blank=True)
+    translated_abstract = models.TextField(blank=True)
+    # chave do PDF no S3 (preenchida depois de salvar o registro, usa o id)
+    s3_key = models.CharField(max_length=512, blank=True)
+
     tags = models.ManyToManyField(Tag, blank=True)
     def __str__(self):
         return self.title

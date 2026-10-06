@@ -1,0 +1,4 @@
+Django>=6.1,<6.2
+psycopg2-binary
+boto3
+redis

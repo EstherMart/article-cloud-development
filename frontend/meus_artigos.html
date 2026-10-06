@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Meus Artigos</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="css/style.css">
+
+</head>
+
+<body>
+
+    <main class="container mt-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <h1 class="titulo-artigos">Meus artigos</h1>
+
+            <a
+                href="criar_artigo.html"
+                class="btn btn-primary"
+            >
+                + Criar artigo
+            </a>
+
+            <!--Ta feio pq o d-flex ajusta os botões, eu coloquei o editar artigo aqui só pra visualizar, 
+            mas quando colocar o javascript, é pra colocar os botões de editar e apagar para cada artigo -->
+            <a
+                href="editar_artigo.html"
+                class="btn btn-primary"
+            >
+                + Editar artigo
+            </a>
+
+        </div>
+
+        <!-- O JavaScript vai colocar os artigos aqui.-->
+        <div id="lista_artigos"></div>
+
+    </main>
+
+    <script src="js/meus_artigos.js"></script>
+
+</body>
+
+</html>
