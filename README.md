@@ -2,7 +2,7 @@
 
 Trabalho Prático 1 de Desenvolvimento de Software para Nuvem (professores Paulo A. L. Rego e Fernando A. M. Trinta).
 
-**Entrega:** 10/10/2026 às 23h59. Link do git e vídeo da Parte 2 funcionando.
+**Equipe:**
 
 ## O que é
 
@@ -32,8 +32,6 @@ Cada serviço tem um papel único. O PDF vai para o S3, os metadados para o RDS,
 | DynamoDB | Log das ações de CRUD: tipo da ação, dados manipulados e hora (`logs_crud`) | Requisito 5 |
 | SNS/SQS | Desacopla a API do worker que extrai e traduz | Requisito 6 |
 | ALB + Auto Scaling | Elasticidade horizontal da API | Parte 2 |
-
-Cada serviço ausente desconta 1,5 ponto. Sem interface gráfica, desconta 1,0.
 
 ## Diagramas
 
@@ -142,7 +140,6 @@ stateDiagram-v2
     PENDENTE --> ERRO: falha no upload ao S3
 ```
 
-Os diagramas usam Mermaid e aparecem renderizados no GitHub.
 
 ## Estrutura do repositório
 
@@ -193,8 +190,4 @@ O front abre direto no navegador (`frontend/index.html`). Detalhes em `backend/R
 | Parte 2 (ALB e Auto Scaling) | pendente, a pesquisar |
 
 ## Regras do time
-
-- Ninguém commita direto na `main`. Use branch `feat/...` e PR revisado (ver `docs/fluxo-git.md`).
-- Nenhuma credencial no código ou no chat. Use `.env` (ignorado pelo git) e, na EC2, a IAM Role (LabRole).
-- A API é stateless: nada de uploads em disco local, sessão em memória ou cache no processo.
 - RDS e ElastiCache cobram por hora. Use instâncias pequenas e apague tudo após a entrega.
