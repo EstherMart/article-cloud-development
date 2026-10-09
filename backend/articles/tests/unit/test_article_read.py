@@ -15,6 +15,16 @@ class ArticleListTests(ApiTestCase):
         self.assertEqual(len(self.client.get('/articles/').json()), 2)
 
 
+class ArticleListQueryTests(ApiTestCase):
+    """A lista não pode fazer uma consulta por artigo (N+1)."""
+
+    def test_numero_de_consultas_nao_cresce_com_os_artigos(self):
+        for i in range(5):
+            self.create_article(title=f'Artigo {i}', authors=[f'Autor {i}'], tags=[f'Tag {i}'])
+        with self.assertNumQueries(3):  # artigos + autores + tags
+            self.client.get('/articles/')
+
+
 class ArticleDetailTests(ApiTestCase):
     """GET /articles/<id>/"""
 

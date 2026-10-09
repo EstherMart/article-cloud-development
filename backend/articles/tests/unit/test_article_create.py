@@ -34,3 +34,33 @@ class ArticleCreateTests(ApiTestCase):
     def test_json_invalido_retorna_400(self):
         resp = self.client.post('/articles/', data='{nao e json', content_type='application/json')
         self.assertEqual(resp.status_code, 400)
+
+    def test_titulo_duplicado_retorna_409(self):
+        self.post_article()
+        self.assertEqual(self.post_article().status_code, 409)
+        self.assertEqual(Article.objects.count(), 1)
+
+    def test_titulo_duplicado_nao_deixa_autor_orfao(self):
+        self.post_article()
+        self.post_article(authors=['Autor novo'])
+        self.assertFalse(Author.objects.filter(name='Autor novo').exists())
+
+    def test_autores_deve_ser_lista(self):
+        self.assertEqual(self.post_article(authors='Ana').status_code, 400)
+
+    def test_tags_deve_ser_lista(self):
+        self.assertEqual(self.post_article(tags='AWS').status_code, 400)
+
+    def test_corpo_que_nao_e_objeto_retorna_400(self):
+        resp = self.client.post('/articles/', data='[1, 2]', content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_ignora_nomes_repetidos_e_vazios(self):
+        resp = self.post_article(authors=['Ana', ' Ana ', ''], tags=['AWS', 'AWS'])
+        article = resp.json()['article']
+        self.assertEqual(article['authors'], ['Ana'])
+        self.assertEqual(article['tags'], ['AWS'])
+
+    def test_guarda_o_resumo_digitado(self):
+        article = self.post_article(abstract='Resumo do trabalho').json()['article']
+        self.assertEqual(article['abstract'], 'Resumo do trabalho')

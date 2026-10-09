@@ -4,7 +4,7 @@ Roda em uma EC2 própria, fora do Auto Scaling Group, e não depende do Django.
 Lê as mesmas variáveis de ambiente do back (ver backend/.env.example).
 Branch: feat/sns-sqs-worker.
 
-Fluxo de cada mensagem (ver docs/arquitetura.md):
+Fluxo de cada mensagem (ver README.md da raiz):
     1. receber a mensagem (long polling);
     2. marcar o artigo como PROCESSANDO;
     3. baixar o PDF do S3 e extrair o texto;

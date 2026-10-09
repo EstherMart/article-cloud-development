@@ -50,7 +50,24 @@ curl -X POST http://127.0.0.1:8000/articles/ -H "Content-Type: application/json"
   "area": "Computação", "user": "teste", "tags": ["AWS", "Python"]}'
 ```
 
-Crie o usuário com `python manage.py createsuperuser` ou pelo `manage.py shell`. O arquivo `articles/guia_p_testar.txt` traz o mesmo roteiro para Windows.
+Crie o usuário com `python manage.py createsuperuser` ou pelo `manage.py shell`.
+
+No Windows (PowerShell), envie o corpo em UTF-8 para não quebrar os acentos:
+
+```
+$body = @{ title = "Introdução à Nuvem"; authors = @("Ana", "Bruno"); area = "Computação"; user = "teste"; tags = @("AWS") } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/articles/" -Method POST -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+```
+
+Respostas de erro (sempre `{"erro": "..."}`):
+
+| Código | Quando |
+|---|---|
+| 400 | JSON inválido, campo obrigatório ausente, `authors` ou `tags` que não são lista |
+| 404 | Artigo ou usuário inexistente |
+| 409 | Título já cadastrado (POST e PUT) |
+
+O POST também aceita `abstract` (resumo). O PUT atualiza `tags` e `abstract` só quando eles vêm no corpo. Toda resposta de artigo traz `id`, `title`, `authors`, `area`, `abstract`, `translated_abstract`, `processing_status`, `upload_datetime`, `user` e `tags`.
 
 ## Modelo de dados (RDS)
 
@@ -95,9 +112,9 @@ Dois grupos, com responsabilidades diferentes:
 | `tests/integration/` | Que a AWS real funciona: rede, permissões, nomes dos recursos | Cobra, precisa de credenciais | Só com `RUN_AWS_INTEGRATION=1` |
 
 ```
-python manage.py test                              # unitários (36), sem AWS
+python manage.py test                              # 48 unitários (6 grupos de integração aparecem como skipped)
 python manage.py test articles.tests.unit.test_models   # um arquivo
-RUN_AWS_INTEGRATION=1 python manage.py test articles.tests.integration   # AWS real (esqueleto)
+RUN_AWS_INTEGRATION=1 python manage.py test articles.tests.integration   # AWS real (desligado por padrão)
 ```
 
 ### Unitários (`tests/unit/`)
@@ -114,7 +131,7 @@ RUN_AWS_INTEGRATION=1 python manage.py test articles.tests.integration   # AWS r
 
 ### Integração (`tests/integration/`)
 
-Só o esqueleto existe: cada arquivo descreve em comentário o que o teste fará. Detalhes e regras em `tests/integration/README.md`.
+Os testes estão escritos e desligados (`RUN_AWS_INTEGRATION=1` liga). Cada arquivo se pula sozinho se faltar variável do `.env`. Variáveis, regras e o que cada um prova estão em `tests/integration/README.md`.
 
 | Arquivo | Serviço |
 |---|---|

@@ -193,11 +193,37 @@ Fora do RDS: o DynamoDB guarda o log de cada CRUD (`logs_crud`), o S3 guarda o P
 ├── worker/     Consumidor SQS: extração e tradução (ver worker/README.md)
 ├── infra/      Parte 2: ALB e Auto Scaling, scripts de setup (ver infra/README.md)
 └── docs/
-    ├── arquitetura.md   fluxos, modelo de dados, decisões técnicas
-    └── aws-setup.md     passo a passo de criação dos recursos AWS
+    └── aws/   passo a passo de cada serviço AWS (ver docs/aws/README.md)
 ```
 
 Cada pasta tem um README próprio com o que existe, o que falta e como rodar.
+
+## Índice da documentação
+
+| Documento | Para quê |
+|---|---|
+| [backend/README.md](backend/README.md) | API, rotas, modelo de dados, migrations e testes |
+| [backend/articles/services/README.md](backend/articles/services/README.md) | Camada de cada serviço AWS |
+| [backend/articles/tests/integration/README.md](backend/articles/tests/integration/README.md) | Testes de integração com a AWS real (desligados por padrão) |
+| [frontend/README.md](frontend/README.md) e [frontend/js/README.md](frontend/js/README.md) | Telas e scripts |
+| [worker/README.md](worker/README.md) | Processamento assíncrono |
+| [infra/README.md](infra/README.md) | Parte 2 (ALB e Auto Scaling) |
+| [docs/aws/README.md](docs/aws/README.md) | Criar, testar e apagar cada serviço AWS, mais o estudo para a arguição |
+
+## Decisões técnicas
+
+- **Redis não guarda PDF.** Um PDF tem vários MB e o ElastiCache é memória cara. Cacheie metadados, listas e buscas. O PDF sai do S3 por URL pré-assinada.
+- **Ordem das gravações.** RDS primeiro para obter o id, depois S3 com o id na chave, depois `s3_key`, log e SNS. Se o upload falhar, apague o registro ou marque ERRO.
+- **Invalidação do cache.** Todo CREATE, UPDATE e DELETE apaga as chaves afetadas (`artigo:{id}`, `artigos:recentes`, `busca:*`). O worker também invalida `artigo:{id}`. O TTL de 5 a 10 minutos é a rede de segurança.
+- **Segurança.** Sem chaves no código, IAM Role na EC2 (LabRole), RDS e Redis em Security Groups que só aceitam as instâncias da aplicação, bucket S3 privado.
+- **Stateless.** Sessão, uploads e cache vão para S3 e Redis, nunca para disco ou memória da EC2. Isso evita retrabalho na Parte 2.
+- **Custos.** RDS e ElastiCache cobram por hora mesmo parados. Use t3.micro e cache.t3.micro, desligue ao fim do dia e apague tudo após a entrega.
+
+## Pontos em aberto
+
+- Chave e atributos da tabela `logs_crud` (a sugestão é partição `article_id` e ordenação `timestamp`).
+- Formato final da mensagem SNS/SQS.
+- Autenticação de usuários (o front tem login e cadastro, o back ainda não).
 
 ## Como começar
 
@@ -211,7 +237,7 @@ cp .env.example .env        # preencha; sem DB_HOST usa SQLite local
 set -a; source .env; set +a
 python manage.py migrate
 python manage.py runserver
-python manage.py test       # 36 testes unitários, sem AWS
+python manage.py test       # 48 testes unitários, sem AWS (os de integração ficam desligados)
 ```
 
 O front abre direto no navegador (`frontend/index.html`). Detalhes em `backend/README.md` e `frontend/README.md`.
