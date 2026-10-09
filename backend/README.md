@@ -126,6 +126,8 @@ Só o esqueleto existe: cada arquivo descreve em comentário o que o teste fará
 | `test_redis.py` | ElastiCache (só da EC2) |
 | `test_pipeline_e2e.py` | Fluxo completo |
 
+`tests/fixtures/pdfs/` tem PDFs de exemplo (com texto, sem texto e inválido) para os testes de upload e do worker. Ver `tests/fixtures/README.md`.
+
 Ao implementar um serviço, escreva primeiro o teste unitário com o cliente simulado (`unittest.mock`) em `unit/test_<servico>.py`. Depois descomente o teste de integração do mesmo serviço.
 
 ## Variáveis de ambiente
