@@ -102,6 +102,7 @@ Os testes usam SQLite em memória e não falam com a AWS. Cada arquivo cobre uma
 | `tests/test_article_read.py` | `GET /articles/` e `GET /articles/<id>/` |
 | `tests/test_article_update_delete.py` | `PUT` e `DELETE` |
 | `tests/test_article_search.py` | `GET /articles/search/` |
+| `tests/test_aws_clients.py` | Fábrica boto3 (`services/aws.py`): cache, região, timeouts, retries, Signature v4 |
 
 Quando implementar um serviço AWS, crie `tests/test_<servico>.py` com o cliente simulado (`unittest.mock`), para os testes seguirem rodando sem custo e sem rede.
 
