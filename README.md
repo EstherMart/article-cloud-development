@@ -211,7 +211,7 @@ cp .env.example .env        # preencha; sem DB_HOST usa SQLite local
 set -a; source .env; set +a
 python manage.py migrate
 python manage.py runserver
-python manage.py test       # 29 testes unitários, sem AWS
+python manage.py test       # 36 testes unitários, sem AWS
 ```
 
 O front abre direto no navegador (`frontend/index.html`). Detalhes em `backend/README.md` e `frontend/README.md`.

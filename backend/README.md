@@ -15,7 +15,7 @@ backend/
     ├── migrations/       0001 a 0004 (ver Migrations)
     ├── views.py          rotas da API (só orquestram)
     ├── urls.py           mapa de rotas
-    ├── tests/            testes unitários, um arquivo por responsabilidade
+    ├── tests/            unit/ (sem AWS) e integration/ (AWS real, desligado por padrão)
     └── services/         uma camada fina por serviço AWS (ver services/README.md)
         ├── aws.py            clientes boto3
         ├── s3.py             PDF
@@ -87,24 +87,46 @@ Nunca edite uma migration já aplicada no RDS. Mudou um model? Rode `python mana
 
 ## Testes
 
+Dois grupos, com responsabilidades diferentes:
+
+| Pasta | O que prova | Rede e custo | Quando roda |
+|---|---|---|---|
+| `tests/unit/` | A lógica do nosso código (SQLite em memória, AWS simulada) | Nenhum | Sempre |
+| `tests/integration/` | Que a AWS real funciona: rede, permissões, nomes dos recursos | Cobra, precisa de credenciais | Só com `RUN_AWS_INTEGRATION=1` |
+
 ```
-python manage.py test                       # todos
-python manage.py test articles.tests.test_models   # um arquivo
+python manage.py test                              # unitários (36), sem AWS
+python manage.py test articles.tests.unit.test_models   # um arquivo
+RUN_AWS_INTEGRATION=1 python manage.py test articles.tests.integration   # AWS real (esqueleto)
 ```
 
-Os testes usam SQLite em memória e não falam com a AWS. Cada arquivo cobre uma responsabilidade:
+### Unitários (`tests/unit/`)
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `tests/base.py` | `ApiTestCase`: cria o usuário e oferece helpers (`post_article`, `create_article`, `send`) |
-| `tests/test_models.py` | Regras do modelo: status padrão, unicidade, N:N, `CASCADE` |
-| `tests/test_article_create.py` | `POST /articles/`: sucesso e erros 400 e 404 |
-| `tests/test_article_read.py` | `GET /articles/` e `GET /articles/<id>/` |
-| `tests/test_article_update_delete.py` | `PUT` e `DELETE` |
-| `tests/test_article_search.py` | `GET /articles/search/` |
-| `tests/test_aws_clients.py` | Fábrica boto3 (`services/aws.py`): cache, região, timeouts, retries, Signature v4 |
+| `base.py` | `ApiTestCase`: cria o usuário e oferece helpers (`post_article`, `create_article`, `send`) |
+| `test_models.py` | Regras do modelo: status padrão, unicidade, N:N, `CASCADE` |
+| `test_article_create.py` | `POST /articles/`: sucesso e erros 400 e 404 |
+| `test_article_read.py` | `GET /articles/` e `GET /articles/<id>/` |
+| `test_article_update_delete.py` | `PUT` e `DELETE` |
+| `test_article_search.py` | `GET /articles/search/` |
+| `test_aws_clients.py` | Fábrica boto3 (`services/aws.py`): cache, região, timeouts, retries, Signature v4. Não abre conexão |
 
-Quando implementar um serviço AWS, crie `tests/test_<servico>.py` com o cliente simulado (`unittest.mock`), para os testes seguirem rodando sem custo e sem rede.
+### Integração (`tests/integration/`)
+
+Só o esqueleto existe: cada arquivo descreve em comentário o que o teste fará. Detalhes e regras em `tests/integration/README.md`.
+
+| Arquivo | Serviço |
+|---|---|
+| `base.py` | Liga e desliga os testes (`RUN_AWS_INTEGRATION`) e pula o que não tem recurso |
+| `test_rds.py` | RDS |
+| `test_s3.py` | S3 |
+| `test_dynamodb.py` | DynamoDB |
+| `test_sns_sqs.py` | SNS, SQS e DLQ |
+| `test_redis.py` | ElastiCache (só da EC2) |
+| `test_pipeline_e2e.py` | Fluxo completo |
+
+Ao implementar um serviço, escreva primeiro o teste unitário com o cliente simulado (`unittest.mock`) em `unit/test_<servico>.py`. Depois descomente o teste de integração do mesmo serviço.
 
 ## Variáveis de ambiente
 
