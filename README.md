@@ -141,11 +141,52 @@ stateDiagram-v2
 ```
 
 
+## Modelo de dados
+
+O RDS guarda os metadados em três tabelas e uma tabela de ligação para cada relação N:N. O app Django `articles` cria tudo pelas migrations.
+
+```mermaid
+erDiagram
+    USER ||--o{ ARTICLE : "cadastra"
+    ARTICLE }o--o{ AUTHOR : "tem"
+    ARTICLE }o--o{ TAG : "tem"
+
+    ARTICLE {
+        bigint id PK
+        varchar title UK "até 255"
+        varchar area "até 255"
+        text abstract "resumo digitado"
+        text translated_abstract "preenchido pelo worker"
+        varchar s3_key "artigos/{id}.pdf"
+        varchar processing_status "PENDENTE, PROCESSANDO, PROCESSADO, ERRO"
+        datetime upload_datetime "automático"
+        int user_id FK
+    }
+    AUTHOR {
+        bigint id PK
+        varchar name
+    }
+    TAG {
+        bigint id PK
+        varchar name UK
+    }
+```
+
+| Decisão | Motivo |
+|---|---|
+| `Author` é uma tabela própria (N:N) | A spec fala em "autores". Um autor pode ter vários artigos |
+| `title` é único | Evita cadastro duplicado do mesmo trabalho |
+| `s3_key` fica vazia até o upload | O id do RDS entra na chave do S3, então o registro nasce primeiro |
+| `translated_abstract` só o worker escreve | A API nunca espera a tradução |
+| Apagar o usuário apaga os artigos (`CASCADE`) | Simplifica o laboratório. Revise antes de usar em produção |
+
+Fora do RDS: o DynamoDB guarda o log de cada CRUD (`logs_crud`), o S3 guarda o PDF e o Redis guarda cópias temporárias das consultas.
+
 ## Estrutura do repositório
 
 ```
 .
-├── backend/    API Django (ver backend/README.md)
+├── backend/    API Django e testes unitários (ver backend/README.md)
 │   └── articles/services/   camada por serviço AWS (esqueleto, ver services/README.md)
 ├── frontend/   Telas estáticas HTML/Bootstrap (ver frontend/README.md)
 │   └── js/                  scripts das telas e acesso à API (ver js/README.md)
@@ -153,22 +194,24 @@ stateDiagram-v2
 ├── infra/      Parte 2: ALB e Auto Scaling, scripts de setup (ver infra/README.md)
 └── docs/
     ├── arquitetura.md   fluxos, modelo de dados, decisões técnicas
-    ├── aws-setup.md     passo a passo de criação dos recursos AWS
-    └── fluxo-git.md     branches, PRs e convenções
+    └── aws-setup.md     passo a passo de criação dos recursos AWS
 ```
 
 Cada pasta tem um README próprio com o que existe, o que falta e como rodar.
 
 ## Como começar
 
+Use Python 3.12 ou mais novo (o Django 6.1 não roda em versões anteriores).
+
 ```
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # preencha; sem DB_HOST usa SQLite local
 set -a; source .env; set +a
-python manage.py makemigrations && python manage.py migrate
+python manage.py migrate
 python manage.py runserver
+python manage.py test       # 29 testes unitários, sem AWS
 ```
 
 O front abre direto no navegador (`frontend/index.html`). Detalhes em `backend/README.md` e `frontend/README.md`.
@@ -177,15 +220,16 @@ O front abre direto no navegador (`frontend/index.html`). Detalhes em `backend/R
 
 | Item | Estado |
 |---|---|
-| Projeto Django, models, GET `/articles/` | feito |
+| Projeto Django, models, migrations | feito |
 | Settings por variável de ambiente (RDS/SQLite) | feito |
-| Telas do front (sem JavaScript) | feito |
-| Conexão com o RDS | pendente |
-| CRUD real, validação | pendente |
+| CRUD e busca no banco (`/articles/`) | feito, com testes |
+| Telas do front (HTML/Bootstrap) | feito |
+| Conexão com o RDS | pendente de validar na AWS |
 | Upload no S3 e URL pré-assinada | pendente |
 | Log no DynamoDB | pendente |
 | Cache Redis | pendente |
 | SNS/SQS e worker | pendente |
+| Autenticação (hoje o POST recebe o `username` no JSON) | pendente |
 | JavaScript do front integrado à API | pendente |
 | Parte 2 (ALB e Auto Scaling) | pendente, a pesquisar |
 

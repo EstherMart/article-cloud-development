@@ -30,8 +30,7 @@ class Article(models.Model):
         default=ProcessingStatus.PENDENTE
     )
 
-    #authors = models.ManyToManyField(Author) múltiplos autores?
-    author = models.CharField(max_length=255)
+    authors = models.ManyToManyField(Author, blank=True)
 
     title = models.CharField(
         max_length=255,

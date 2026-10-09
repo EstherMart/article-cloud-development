@@ -17,3 +17,8 @@ media_root/
 .vscode/
 .idea/
 .DS_Store
+backend/bin/*
+backend/lib/*
+backend/lib64/*
+backend/lib64
+backend/pyvenv.cfg
