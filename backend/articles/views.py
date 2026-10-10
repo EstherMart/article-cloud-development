@@ -17,6 +17,7 @@ from article_cloud.http import error, read_json
 from .models import Article, Author, Tag
 from services.dynamo_log import log_action
 from services.s3 import upload_pdf, delete_pdf, presigned_url
+from services.cache import get_or_set, invalidate_article
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,10 @@ def fetch_article(article_id):
 class ArticleView(View):
 
     def get(self, request):
-        articles = [serialize(a) for a in articles_queryset()]
+        
+        def db_loader():
+            return [serialize(a) for a in articles_queryset()]
+        articles = get_or_set('artigos:recentes', db_loader)
         log_action('READ', 'list', {'count': len(articles)})
         return JsonResponse(articles, safe=False)
 
@@ -127,6 +131,7 @@ class ArticleView(View):
             return fail(f"Erro {str(e)} identificado!", 500, 'ArticleView.post')
 
         created_article = serialize(fetch_article(article.id))
+        invalidate_article(article.id)
         log_action('CREATE', str(article.id), created_article)
 
         return JsonResponse(
@@ -139,13 +144,19 @@ class ArticleView(View):
 class ArticleDetailsView(View):
 
     def get(self, request, id):
-        article = fetch_article(id)
-        if article is None:
+
+        def db_loader():
+            article = fetch_article(id)
+            if article:
+                return serialize(article) 
+            return None
+        
+        article_data = get_or_set(f'artigo:{id}', db_loader)
+        if article_data is None:
             return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.get')
 
-        data = serialize(article)
-        log_action('READ', str(id), data)
-        return JsonResponse(data)
+        log_action('READ', str(id), article_data)
+        return JsonResponse(article_data)
 
     @token_required
     def put(self, request, id):
@@ -184,6 +195,7 @@ class ArticleDetailsView(View):
             return fail(TITULO_DUPLICADO, 409, 'ArticleDetailsView.put')
 
         updated_article = serialize(fetch_article(id))
+        invalidate_article(id)
         log_action('UPDATE', str(id),  updated_article)
 
         return JsonResponse({'mensagem': 'Artigo atualizado com sucesso', 'article': serialize(fetch_article(id))})
@@ -200,11 +212,10 @@ class ArticleDetailsView(View):
                 delete_pdf(article.s3_key)
             except Exception as e:
                 return fail(f"Erro {str(e)} identificado!", 500, 'ArticleDetailsView.delete')
-            
-        # Falta: Invalidar o cache.
 
         deleted_data = serialize(article)
         article.delete()
+        invalidate_article(id)
         log_action('DELETE', str(id), deleted_data)
 
         return JsonResponse({'mensagem': 'Artigo deletado com sucesso'})
@@ -213,15 +224,19 @@ class ArticleDetailsView(View):
 class ArticleSearchView(View):
 
     def get(self, request):
-        query = request.GET.get('q', '')
-        articles = articles_queryset().filter(
-            Q(title__icontains=query)
-            | Q(authors__name__icontains=query)
-            | Q(area__icontains=query)
-            | Q(tags__name__icontains=query)
-        ).distinct()
 
-        search_results = [serialize(a) for a in articles]
+        query = request.GET.get('q', '')
+
+        def db_loader():
+            articles = articles_queryset().filter(
+                        Q(title__icontains=query)
+                        | Q(authors__name__icontains=query)
+                        | Q(area__icontains=query)
+                        | Q(tags__name__icontains=query)
+                    ).distinct()
+            return [serialize(a) for a in articles]
+
+        search_results = get_or_set(f'busca:{query}', db_loader)
         log_action('READ', 'Search', {'query': query, 'count': len(search_results)})
         return JsonResponse(search_results, safe=False)
 
