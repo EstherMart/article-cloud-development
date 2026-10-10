@@ -1,5 +1,15 @@
-// Tela artigos.html: lista e busca.
-// TODO:
-// 1. Ao carregar, chamar listarArtigos() e montar os cards no DOM.
-// 2. No formulário de busca, chamar buscarArtigos(termo) e redesenhar a lista.
-// 3. Mostrar o estado de processamento (PENDENTE, PROCESSANDO, PROCESSADO, ERRO).
+// Tela artigos.html: lista todos os artigos ou o resultado da busca (?busca=termo).
+async function carregarArtigos() {
+    const termo = (new URLSearchParams(location.search).get('busca') || '').trim();
+    document.getElementById('campo-busca').value = termo;
+    document.getElementById('texto-pesquisa').textContent = termo ? 'Resultados para "' + termo + '"' : '';
+
+    try {
+        const artigos = termo ? await buscarArtigos(termo) : await listarArtigos();
+        document.getElementById('lista_artigos').innerHTML = listaDeCards(artigos, 'Nenhum artigo encontrado.');
+    } catch (erro) {
+        mostrarAlerta(erro.message);
+    }
+}
+
+carregarArtigos();

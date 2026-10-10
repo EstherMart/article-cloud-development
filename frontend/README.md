@@ -1,26 +1,37 @@
 # Frontend
 
-Telas estáticas em HTML com Bootstrap e CSS próprio. Não há build: abra os arquivos no navegador ou sirva a pasta (`python -m http.server` dentro de `frontend/`).
+Telas estáticas em HTML com Bootstrap e JavaScript puro. Não há build. Sirva a pasta por HTTP (abrir o arquivo direto no navegador não funciona com o login):
+
+```
+cd frontend
+python3 -m http.server 8080
+```
+
+Com a API no ar (ver README da raiz), abra `http://127.0.0.1:8080`.
 
 ## Telas
 
-| Arquivo | Tela |
-|---|---|
-| `index.html` | Home |
-| `cadastro.html` | Cadastro de usuário |
-| `login.html` | Login |
-| `perfil.html` | Perfil |
-| `artigos.html` | Lista e busca de artigos |
-| `artigo.html` | Detalhe do artigo (só o layout inicial) |
-| `criar_artigo.html` | Formulário de novo artigo com PDF |
-| `editar_artigo.html` | Edição de artigo |
-| `meus_artigos.html` | Artigos do usuário |
-| `css/style.css` | Estilos |
+| Arquivo | Tela | Exige login |
+|---|---|---|
+| `index.html` | Home com busca | não |
+| `login.html`, `cadastro.html` | Entrar e criar conta | não |
+| `artigos.html` | Lista e busca (`?busca=termo`) | não |
+| `artigo.html?id=N` | Detalhe, status, tradução e download do PDF | não |
+| `meus_artigos.html` | Artigos do usuário, com editar e excluir | sim |
+| `criar_artigo.html` | Novo artigo com PDF, autores e palavras-chave | sim |
+| `editar_artigo.html?id=N` | Edição dos metadados | sim |
 
-## Pendente
+## Configuração
 
-- Os HTMLs referenciam scripts que ainda não existem: `js/artigos.js`, `js/criar_artigo.js`, `js/editar_artigo.js` e `js/meus_artigos.js`. Falta criar a pasta `js/` e ligar os formulários à API (`fetch`).
-- A tela de detalhe (`artigo.html`) não tem formulário nem script.
-- Definir a URL base da API em um único lugar (por exemplo `js/config.js`), para trocar entre local e o ALB.
-- O back não tem login ainda. Decidir como a autenticação funciona antes de ligar `login.html` e `cadastro.html`.
-- Se o front for aberto de outra origem que a API, o back precisará de CORS.
+A URL da API fica em `js/config.js` (`API_BASE_URL`). O front roda em outra origem que a API, então a origem do front precisa estar em `CORS_ALLOWED_ORIGINS` no backend. Se mudar a porta do front, ajuste essa variável.
+
+## Contrato esperado da API
+
+Além das rotas de `/articles/` (ver `backend/README.md`):
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /auth/register/` | `{username, email, password}` | 201 |
+| `POST /auth/login/` | `{username, password}` | `{token, username}` |
+
+As demais chamadas enviam `Authorization: Token <token>`. Erros da API vêm como `{"erro": "..."}` e aparecem num alerta na tela.

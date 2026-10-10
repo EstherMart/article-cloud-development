@@ -1,19 +1,44 @@
 // Funções de acesso à API. Todas as telas usam estas funções, nenhuma chama fetch direto.
-// Precisa vir depois de config.js e antes do script da tela:
-//   <script src="js/config.js"></script>
-//   <script src="js/api.js"></script>
-//   <script src="js/artigos.js"></script>
+// Ordem dos scripts: config.js, auth.js, api.js, ui.js, nav.js e o script da tela.
 //
 // Rotas (ver backend/README.md): GET/POST /articles/, GET/PUT/DELETE /articles/<id>/,
-// GET /articles/search/?q=..., GET /articles/<id>/download/
+// GET /articles/search/?q=..., GET /articles/<id>/download/, POST /auth/register/ e /auth/login/
 
 async function apiRequest(path, options = {}) {
-    const response = await fetch(API_BASE_URL + path, options);
-    if (!response.ok) {
-        // TODO: mostrar a mensagem de erro da API na tela.
-        throw new Error('Erro ' + response.status + ' em ' + path);
+    const headers = { ...options.headers };
+    const sessao = lerSessao();
+    if (sessao) {
+        headers.Authorization = 'Token ' + sessao.token;
     }
-    return response.json();
+
+    let response;
+    try {
+        response = await fetch(API_BASE_URL + path, { ...options, headers });
+    } catch (erro) {
+        throw new Error('Não foi possível conectar à API.');
+    }
+
+    const corpo = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(corpo.erro || 'Erro ' + response.status + ' em ' + path);
+    }
+    return corpo;
+}
+
+function enviarJson(path, metodo, dados) {
+    return apiRequest(path, {
+        method: metodo,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados),
+    });
+}
+
+function cadastrarUsuario(username, email, password) {
+    return enviarJson('/auth/register/', 'POST', { username, email, password });
+}
+
+function entrar(username, password) {
+    return enviarJson('/auth/login/', 'POST', { username, password });
 }
 
 function listarArtigos() {
@@ -35,11 +60,7 @@ function criarArtigo(formData) {
 }
 
 function atualizarArtigo(id, dados) {
-    return apiRequest('/articles/' + id + '/', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados),
-    });
+    return enviarJson('/articles/' + id + '/', 'PUT', dados);
 }
 
 function excluirArtigo(id) {
@@ -47,6 +68,7 @@ function excluirArtigo(id) {
 }
 
 // Devolve a URL pré-assinada do S3. Abra com window.location = url.
-function urlDownload(id) {
-    return apiRequest('/articles/' + id + '/download/');
+async function urlDownload(id) {
+    const dados = await apiRequest('/articles/' + id + '/download/');
+    return dados.download_url || dados['download URL'];
 }

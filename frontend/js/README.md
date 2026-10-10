@@ -1,32 +1,17 @@
 # frontend/js
 
-Scripts das telas. Sem build e sem framework: JavaScript puro.
+JavaScript puro, sem build. Ordem de carregamento em cada tela:
+`config.js`, `auth.js`, `api.js`, `ui.js`, `nav.js` e o script da tela.
 
 | Arquivo | Função |
 |---|---|
-| `config.js` | URL base da API (`API_BASE_URL`). Único lugar onde ela aparece |
-| `api.js` | Funções de acesso à API (`listarArtigos`, `criarArtigo`, ...) |
-| `artigos.js` | Tela `artigos.html` |
-| `criar_artigo.js` | Tela `criar_artigo.html` |
-| `editar_artigo.js` | Tela `editar_artigo.html` |
-| `meus_artigos.js` | Tela `meus_artigos.html` |
+| `config.js` | URL base da API (`API_BASE_URL`) |
+| `auth.js` | Sessão (token e usuário no `localStorage`) |
+| `api.js` | Todas as chamadas à API. Nenhuma tela usa `fetch` direto |
+| `ui.js` | Alerta de erro, badge de status, card de artigo e campo de chips |
+| `nav.js` | Barra de navegação (muda com o login) |
+| `artigos.js`, `artigo.js`, `meus_artigos.js` | Listagem, detalhe e área do usuário |
+| `criar_artigo.js`, `editar_artigo.js` | Formulários de artigo |
+| `login.js`, `cadastro.js` | Autenticação |
 
-Os scripts das telas só têm comentários com o que fazer. Implemente seguindo os TODOs.
-
-## Como ligar uma tela
-
-Os HTMLs já incluem o script da tela. Falta incluir `config.js` e `api.js` antes dele:
-
-```html
-<script src="js/config.js"></script>
-<script src="js/api.js"></script>
-<script src="js/artigos.js"></script>
-```
-
-## Regras
-
-- Nenhuma tela chama `fetch` direto. Todas usam `api.js`.
-- No envio do PDF use `FormData` e não defina `Content-Type`.
-- O download do PDF vem de uma URL pré-assinada do S3, obtida em `/articles/<id>/download/`.
-- Quando a API estiver em outra origem, o back precisa de CORS (`django-cors-headers`). Sem isso o navegador bloqueia as chamadas.
-- `artigo.html` (detalhe) ainda não tem script. Crie `artigo.js` quando for a vez dela.
+No envio do PDF o `FormData` não define `Content-Type`: o navegador coloca o boundary do multipart. O download vem de uma URL pré-assinada do S3, obtida em `/articles/<id>/download/`.
