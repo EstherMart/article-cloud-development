@@ -1,4 +1,4 @@
-"""Log das ações de CRUD no DynamoDB. Branch: feat/log-dynamodb.
+"""Log das ações de CRUD no DynamoDB.
 
 A spec exige em toda ação: o tipo da ação, os dados manipulados e a hora.
 Tabela: logs_crud (nome em DYNAMODB_TABLE).

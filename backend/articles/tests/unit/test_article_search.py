@@ -5,6 +5,7 @@ class ArticleSearchTests(ApiTestCase):
     """GET /articles/search/?q="""
 
     def setUp(self):
+        super().setUp()
         self.create_article()
         self.create_article(title='Banco de dados', authors=['Zeca'], area='Dados', tags=['SQL'])
 

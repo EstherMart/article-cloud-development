@@ -2,7 +2,6 @@
 fica em `services/` (ver services/README.md)."""
 import json
 
-from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import JsonResponse
@@ -12,9 +11,13 @@ from django.views.decorators.csrf import csrf_exempt
 import boto3
 from django.conf import settings
 
+from accounts.tokens import token_required
+from article_cloud.http import error, read_json
+
 from .models import Article, Author, Tag
 
 TITULO_DUPLICADO = 'Já existe um artigo com esse título'
+SEM_PERMISSAO = 'Você só pode alterar os seus próprios artigos'
 
 
 def articles_queryset():
@@ -35,21 +38,6 @@ def serialize(article):
         'user': article.user.username,
         'tags': [tag.name for tag in article.tags.all()],
     }
-
-
-def error(message, status):
-    return JsonResponse({'erro': message}, status=status)
-
-
-def read_json(request):
-    """Corpo da requisição como dict. Levanta ValueError se não for um objeto JSON."""
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError as exc:
-        raise ValueError('JSON inválido') from exc
-    if not isinstance(body, dict):
-        raise ValueError('JSON inválido')
-    return body
 
 
 def clean_names(value):
@@ -79,11 +67,11 @@ class ArticleView(View):
     def get(self, request):
         return JsonResponse([serialize(a) for a in articles_queryset()], safe=False)
 
+    @token_required
     def post(self, request):
 
         title = request.POST.get('title')
         area = request.POST.get('area')
-        username = request.POST.get('user')
         abstract = request.POST.get('abstract', '')
         pdf_file = request.FILES.get('file')
 
@@ -96,20 +84,16 @@ class ArticleView(View):
         authors = clean_names(authors)
         tags = clean_names(tags)
 
-        if not title or not area or not username or not authors:
-            return error('title, authors, area e user são obrigatórios', 400)
+        if not title or not area or not authors:
+            return error('title, authors e area são obrigatórios', 400)
         if tags is None or not isinstance(abstract, str):
             return error('tags deve ser uma lista de textos e abstract deve ser texto', 400)
         if not pdf_file:
             return error('O envio do PDF é obrigatório!', 400)
 
-        user = User.objects.filter(username=username).first()
-        if user is None:
-            return error('Usuário não encontrado', 404)
-
         try:
             with transaction.atomic():
-                article = Article.objects.create(title=title, area=area, user=user, abstract=abstract)
+                article = Article.objects.create(title=title, area=area, user=request.user, abstract=abstract)
                 set_authors(article, authors)
                 set_tags(article, tags)
 
@@ -148,10 +132,13 @@ class ArticleDetailsView(View):
             return error('Artigo de id inexistente', 404)
         return JsonResponse(serialize(article))
 
+    @token_required
     def put(self, request, id):
         article = fetch_article(id)
         if article is None:
             return error('Artigo de id inexistente', 404)
+        if article.user_id != request.user.id:
+            return error(SEM_PERMISSAO, 403)
 
         try:
             body = read_json(request)
@@ -183,10 +170,13 @@ class ArticleDetailsView(View):
 
         return JsonResponse({'mensagem': 'Artigo atualizado com sucesso', 'article': serialize(fetch_article(id))})
 
+    @token_required
     def delete(self, request, id):
         article = fetch_article(id)
         if article is None:
             return error('Artigo de id inexistente', 404)
+        if article.user_id != request.user.id:
+            return error(SEM_PERMISSAO, 403)
         if (article.s3_key):
             try:
                 s3_client = boto3.client(
@@ -202,7 +192,6 @@ class ArticleDetailsView(View):
                 )
             except Exception as e:
                 return error(f"Erro {str(e)} identificado!", 500)
-        # Falta: Registrar no DynamoDB e invalidar o cache.
         article.delete()
         return JsonResponse({'mensagem': 'Artigo deletado com sucesso'})
 

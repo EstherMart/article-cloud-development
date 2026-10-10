@@ -9,7 +9,8 @@ backend/
 ├── manage.py
 ├── requirements.txt
 ├── .env.example          modelo das variáveis de ambiente
-├── article_cloud/        configuração do projeto (settings, urls, wsgi)
+├── article_cloud/        configuração do projeto (settings, urls, wsgi, http.py com helpers)
+├── accounts/             cadastro, login e token
 └── articles/             app principal
     ├── models.py         Article, Tag, Author
     ├── migrations/       0001 a 0004 (ver Migrations)
@@ -30,44 +31,49 @@ Crescimento previsto: quando `views.py` ficar grande, vira o pacote `views/` e g
 
 ## Rotas
 
-| Método | Rota | Função | Estado |
+Autenticação por token: o login devolve um token assinado (`django.core.signing`, validade de 7 dias, sem estado no servidor). Envie em `Authorization: Token <token>`. Todas as instâncias da API precisam usar a mesma `DJANGO_SECRET_KEY`.
+
+| Método | Rota | Função | Autenticação |
 |---|---|---|---|
-| GET | `/articles/` | Lista artigos | implementado (sem paginação nem cache) |
-| POST | `/articles/` | Cadastra artigo | implementado em JSON, sem PDF, S3, DynamoDB e SNS |
-| GET | `/articles/<id>/` | Detalhe | implementado |
-| PUT | `/articles/<id>/` | Atualiza título, autores e área | implementado |
-| DELETE | `/articles/<id>/` | Remove | implementado (não apaga o PDF do S3 ainda) |
-| GET | `/articles/search/?q=` | Busca em título, autor, área e tag | implementado |
-| GET | `/articles/<id>/download/` | URL pré-assinada do PDF | stub |
+| POST | `/auth/register/` | Cria usuário (`username`, `email`, `password`) | não |
+| POST | `/auth/login/` | Devolve `{token, username}` | não |
+| GET | `/articles/` | Lista artigos | não |
+| POST | `/articles/` | Cadastra artigo (multipart com PDF). O dono é o usuário do token | sim |
+| GET | `/articles/<id>/` | Detalhe | não |
+| PUT | `/articles/<id>/` | Atualiza título, autores, área, tags e resumo (JSON). Só o dono | sim |
+| DELETE | `/articles/<id>/` | Remove o artigo e o PDF do S3. Só o dono | sim |
+| GET | `/articles/search/?q=` | Busca em título, autor, área e tag | não |
+| GET | `/articles/<id>/download/` | URL pré-assinada do PDF | não |
 
 `/articles/search/` fica antes de `/articles/<id>/` no `urls.py` para a busca não ser confundida com um id.
 
-Exemplo de cadastro (o usuário precisa existir; sem login, o POST recebe o `username`):
+Exemplo: login e cadastro de artigo (copie o `token` da resposta do login):
 
 ```
-curl -X POST http://127.0.0.1:8000/articles/ -H "Content-Type: application/json" -d '{
-  "title": "Introdução à Nuvem", "authors": ["Ana", "Bruno"],
-  "area": "Computação", "user": "teste", "tags": ["AWS", "Python"]}'
+curl -X POST http://127.0.0.1:8000/auth/login/ -H "Content-Type: application/json" \
+  -d '{"username": "teste", "password": "sua-senha"}'
+
+curl -X POST http://127.0.0.1:8000/articles/ -H "Authorization: Token <token>" \
+  -F title="Introdução à Nuvem" -F area="Computação" -F abstract="Resumo" \
+  -F authors='["Ana", "Bruno"]' -F tags='["AWS", "Python"]' \
+  -F file=@articles/tests/fixtures/pdfs/artigo_nuvem.pdf
 ```
 
-Crie o usuário com `python manage.py createsuperuser` ou pelo `manage.py shell`.
-
-No Windows (PowerShell), envie o corpo em UTF-8 para não quebrar os acentos:
-
-```
-$body = @{ title = "Introdução à Nuvem"; authors = @("Ana", "Bruno"); area = "Computação"; user = "teste"; tags = @("AWS") } | ConvertTo-Json
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/articles/" -Method POST -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
-```
+`authors` e `tags` são listas em JSON dentro do campo do formulário.
 
 Respostas de erro (sempre `{"erro": "..."}`):
 
 | Código | Quando |
 |---|---|
-| 400 | JSON inválido, campo obrigatório ausente, `authors` ou `tags` que não são lista |
-| 404 | Artigo ou usuário inexistente |
-| 409 | Título já cadastrado (POST e PUT) |
+| 400 | Campo obrigatório ausente, JSON inválido, PDF ausente, senha fraca |
+| 401 | Sem token, token inválido ou expirado, login errado |
+| 403 | Alterar ou apagar artigo de outro usuário |
+| 404 | Artigo inexistente |
+| 409 | Título ou nome de usuário já cadastrado |
 
-O POST também aceita `abstract` (resumo). O PUT atualiza `tags` e `abstract` só quando eles vêm no corpo. Toda resposta de artigo traz `id`, `title`, `authors`, `area`, `abstract`, `translated_abstract`, `processing_status`, `upload_datetime`, `user` e `tags`.
+Toda resposta de artigo traz `id`, `title`, `authors`, `area`, `abstract`, `translated_abstract`, `processing_status`, `upload_datetime`, `user` e `tags`.
+
+CORS: as origens do front liberadas ficam em `CORS_ALLOWED_ORIGINS` (padrão `http://127.0.0.1:8080` e `http://localhost:8080`).
 
 ## Modelo de dados (RDS)
 
@@ -112,7 +118,7 @@ Dois grupos, com responsabilidades diferentes:
 | `tests/integration/` | Que a AWS real funciona: rede, permissões, nomes dos recursos | Cobra, precisa de credenciais | Só com `RUN_AWS_INTEGRATION=1` |
 
 ```
-python manage.py test                              # 48 unitários (6 grupos de integração aparecem como skipped)
+python manage.py test                              # unitários (os 6 grupos de integração aparecem como skipped)
 python manage.py test articles.tests.unit.test_models   # um arquivo
 RUN_AWS_INTEGRATION=1 python manage.py test articles.tests.integration   # AWS real (desligado por padrão)
 ```

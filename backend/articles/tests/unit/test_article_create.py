@@ -24,16 +24,26 @@ class ArticleCreateTests(ApiTestCase):
         self.assertEqual(Tag.objects.count(), 2)
 
     def test_campo_obrigatorio_ausente_retorna_400(self):
-        for campo in ('title', 'authors', 'area', 'user'):
+        for campo in ('title', 'authors', 'area'):
             with self.subTest(campo=campo):
                 self.assertEqual(self.post_article(**{campo: ''}).status_code, 400)
 
-    def test_usuario_inexistente_retorna_404(self):
-        self.assertEqual(self.post_article(user='ninguem').status_code, 404)
+    def test_sem_token_retorna_401(self):
+        self.logout()
+        self.assertEqual(self.post_article().status_code, 401)
+        self.assertEqual(Article.objects.count(), 0)
 
-    def test_json_invalido_retorna_400(self):
-        resp = self.client.post('/articles/', data='{nao e json', content_type='application/json')
-        self.assertEqual(resp.status_code, 400)
+    def test_artigo_pertence_ao_usuario_do_token(self):
+        self.assertEqual(self.post_article().json()['article']['user'], self.USERNAME)
+
+    def test_sem_pdf_retorna_400(self):
+        self.assertEqual(self.post_article(file=None).status_code, 400)
+        self.assertEqual(Article.objects.count(), 0)
+
+    def test_envia_o_pdf_ao_s3(self):
+        article = self.post_article().json()['article']
+        self.s3.upload_fileobj.assert_called_once()
+        self.assertTrue(Article.objects.get(id=article['id']).s3_key.startswith(f"artigos/{article['id']}-"))
 
     def test_titulo_duplicado_retorna_409(self):
         self.post_article()
@@ -51,9 +61,8 @@ class ArticleCreateTests(ApiTestCase):
     def test_tags_deve_ser_lista(self):
         self.assertEqual(self.post_article(tags='AWS').status_code, 400)
 
-    def test_corpo_que_nao_e_objeto_retorna_400(self):
-        resp = self.client.post('/articles/', data='[1, 2]', content_type='application/json')
-        self.assertEqual(resp.status_code, 400)
+    def test_autores_com_json_invalido_retorna_400(self):
+        self.assertEqual(self.post_article(authors='{nao e json').status_code, 400)
 
     def test_ignora_nomes_repetidos_e_vazios(self):
         resp = self.post_article(authors=['Ana', ' Ana ', ''], tags=['AWS', 'AWS'])

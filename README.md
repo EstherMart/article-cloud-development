@@ -225,22 +225,59 @@ Cada pasta tem um README próprio com o que existe, o que falta e como rodar.
 - Formato final da mensagem SNS/SQS.
 - Autenticação de usuários (o front tem login e cadastro, o back ainda não).
 
-## Como começar
+## Como rodar localmente
 
-Use Python 3.12 ou mais novo (o Django 6.1 não roda em versões anteriores).
+Requisitos: Python 3.12 ou mais novo (o Django 6.1 não roda em versões anteriores). Sem `DB_HOST` o backend usa SQLite, então não precisa de banco nem de AWS para ver as telas.
+
+**1. Backend** (terminal 1)
 
 ```
 cd backend
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # preencha; sem DB_HOST usa SQLite local
+cp .env.example .env
 set -a; source .env; set +a
 python manage.py migrate
-python manage.py runserver
-python manage.py test       # 48 testes unitários, sem AWS (os de integração ficam desligados)
+python manage.py runserver          # http://127.0.0.1:8000
 ```
 
-O front abre direto no navegador (`frontend/index.html`). Detalhes em `backend/README.md` e `frontend/README.md`.
+**2. Frontend** (terminal 2)
+
+```
+cd frontend
+python3 -m http.server 8080         # http://127.0.0.1:8080
+```
+
+Abra `http://127.0.0.1:8080`, crie uma conta em **Cadastro** e entre. A lista, a busca e o detalhe funcionam só com o SQLite.
+
+**Trocar a porta do front.** Se a 8080 estiver ocupada, suba o front em outra porta e libere a origem no backend, porque o CORS só aceita as origens da lista:
+
+```
+python3 -m http.server 5500
+export CORS_ALLOWED_ORIGINS=http://127.0.0.1:5500,http://localhost:5500   # antes do runserver
+```
+
+Use o mesmo endereço no navegador e no CORS (`127.0.0.1` e `localhost` são origens diferentes). Se a API não estiver em `127.0.0.1:8000`, ajuste `API_BASE_URL` em `frontend/js/config.js`.
+
+**Com a AWS.** Criar artigo, baixar o PDF e excluir usam o S3. Para isso, defina no `.env` as credenciais e o bucket (`AWS_STORAGE_BUCKET_NAME`, `AWS_S3_REGION_NAME`). Passo a passo de cada serviço em [docs/aws/](docs/aws/README.md).
+
+**Testes**
+
+```
+cd backend
+python manage.py test               # unitários, sem AWS (os de integração ficam desligados)
+```
+
+**Problemas comuns**
+
+| Sintoma | Causa |
+|---|---|
+| Tela abre, mas a lista fica vazia e o console mostra erro de CORS | A origem do front não está em `CORS_ALLOWED_ORIGINS` |
+| "Não foi possível conectar à API" | O backend não está no ar, ou `API_BASE_URL` aponta para outra porta |
+| Login redireciona sempre para `login.html` | Sessão expirou (token vale 7 dias) ou foi gerada com outra `DJANGO_SECRET_KEY` |
+| Erro ao criar artigo | O S3 não está configurado |
+
+Detalhes em `backend/README.md` e `frontend/README.md`.
 
 ## Status
 

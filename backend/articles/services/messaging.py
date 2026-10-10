@@ -1,4 +1,4 @@
-"""Publicação de eventos no SNS. Branch: feat/sns-sqs-worker.
+"""Publicação de eventos no SNS.
 
 A API publica e responde, sem esperar o worker. O SNS entrega na fila SQS
 (assinatura com raw message delivery) e o worker consome.

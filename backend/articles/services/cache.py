@@ -1,4 +1,4 @@
-"""Cache Redis (ElastiCache). Branch: feat/cache-redis.
+"""Cache Redis (ElastiCache).
 
 Padrão cache-aside:
     1. procura a chave no Redis;

@@ -1,4 +1,4 @@
-"""PDFs no S3. Branch: feat/s3-upload.
+"""PDFs no S3.
 
 Regras:
 - Bucket privado (nome em S3_BUCKET). Ninguém acessa o PDF direto.
