@@ -17,6 +17,7 @@ Visibility Timeout e, após 3 tentativas, vai para a DLQ.
 """
 import json
 import os
+from google import genai
 
 
 def receive_messages(sqs, queue_url):
@@ -40,7 +41,25 @@ def translate(text, target='en'):
     Text=..., SourceLanguageCode='pt', TargetLanguageCode=target).
     Alternativa gratuita: deep-translator. O Translate limita o tamanho do texto,
     então traduza só o resumo."""
-    raise NotImplementedError
+    if not text.strip():
+        return ''
+
+    client = genai.Client(api_key=os.environ['GEMINI_API_KEY'])
+    model = os.environ['GEMINI_MODEL']
+
+    response = client.models.generate_content(
+        model=model,
+        contents=(
+            f"Traduza o texto para o idioma de código '{target}'. "
+            "Retorne somente a tradução, sem explicações.\n\n"
+            f"{text}"
+        ),
+    )
+
+    if not response.text:
+        raise RuntimeError('O Gemini não retornou uma tradução.')
+
+    return response.text.strip()
 
 
 def save_result(article_id, translated_abstract, status):
