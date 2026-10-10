@@ -11,16 +11,25 @@ Atributos sugeridos: action (CREATE/READ/UPDATE/DELETE), data (dados do artigo
 em dict simples), timestamp, article_id.
 """
 from .aws import resource
-
-ACTIONS = ('CREATE', 'READ', 'UPDATE', 'DELETE')
-
+from django.conf import settings
+from datetime import datetime, timezone
+import logging
+logger = logging.getLogger(__name__)
 
 def log_action(action, article_id, data):
-    """Grava um item em logs_crud.
 
-    Como fazer: resource('dynamodb').Table(nome).put_item(Item={...}).
-    Cuidado: o DynamoDB não aceita float, use int ou str (ou Decimal).
-    Falha de log não deve derrubar o CRUD: capture a exceção, registre com
-    logging e siga, ou decida em grupo que o log é obrigatório.
-    """
-    raise NotImplementedError
+    try:
+        dynamoDB = resource('dynamodb')
+
+        table = dynamoDB.Table(settings.AWS_DYNAMODB_TABLE_NAME)
+        table.put_item(
+            Item = {
+                'article_id': str(article_id),
+                'data': data,
+                'action': action,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Erro no log: {str(e)}")
