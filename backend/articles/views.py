@@ -9,6 +9,8 @@ from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+import boto3
+from django.conf import settings
 
 from .models import Article, Author, Tag
 
@@ -78,22 +80,28 @@ class ArticleView(View):
         return JsonResponse([serialize(a) for a in articles_queryset()], safe=False)
 
     def post(self, request):
-        try:
-            body = read_json(request)
-        except ValueError as exc:
-            return error(str(exc), 400)
 
-        title = body.get('title')
-        area = body.get('area')
-        username = body.get('user')
-        authors = clean_names(body.get('authors', []))
-        tags = clean_names(body.get('tags', []))
-        abstract = body.get('abstract', '')
+        title = request.POST.get('title')
+        area = request.POST.get('area')
+        username = request.POST.get('user')
+        abstract = request.POST.get('abstract', '')
+        pdf_file = request.FILES.get('file')
+
+        try:
+            authors = json.loads(request.POST.get('authors', '[]'))
+            tags = json.loads(request.POST.get('tags', '[]'))
+        except json.JSONDecodeError:
+            return error('Authors e tags devem estar no formato JSON válido!', 400)
+
+        authors = clean_names(authors)
+        tags = clean_names(tags)
 
         if not title or not area or not username or not authors:
             return error('title, authors, area e user são obrigatórios', 400)
         if tags is None or not isinstance(abstract, str):
             return error('tags deve ser uma lista de textos e abstract deve ser texto', 400)
+        if not pdf_file:
+            return error('O envio do PDF é obrigatório!', 400)
 
         user = User.objects.filter(username=username).first()
         if user is None:
@@ -104,8 +112,26 @@ class ArticleView(View):
                 article = Article.objects.create(title=title, area=area, user=user, abstract=abstract)
                 set_authors(article, authors)
                 set_tags(article, tags)
+
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
+                    aws_session_token = settings.AWS_SESSION_TOKEN,
+                    region_name = settings.AWS_S3_REGION_NAME
+                )
+                s3_key = f"artigos/{article.id}-{pdf_file.name}"
+                s3_client.upload_fileobj(
+                    pdf_file,
+                    settings.AWS_STORAGE_BUCKET_NAME,
+                    s3_key
+                )
+                article.s3_key = s3_key
+                article.save()
         except IntegrityError:
             return error(TITULO_DUPLICADO, 409)
+        except Exception as e:
+            return error(f"Erro {str(e)} identificado!", 500)
 
         return JsonResponse(
             {'mensagem': 'Artigo cadastrado com sucesso', 'article': serialize(fetch_article(article.id))},
@@ -161,7 +187,22 @@ class ArticleDetailsView(View):
         article = fetch_article(id)
         if article is None:
             return error('Artigo de id inexistente', 404)
-        # Falta: apagar o PDF do S3, registrar no DynamoDB e invalidar o cache.
+        if (article.s3_key):
+            try:
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
+                    aws_session_token = settings.AWS_SESSION_TOKEN,
+                    region_name = settings.AWS_S3_REGION_NAME
+                )
+                s3_client.delete_object(
+                    Bucket = settings.AWS_STORAGE_BUCKET_NAME,
+                    Key = article.s3_key
+                )
+            except Exception as e:
+                return error(f"Erro {str(e)} identificado!", 500)
+        # Falta: Registrar no DynamoDB e invalidar o cache.
         article.delete()
         return JsonResponse({'mensagem': 'Artigo deletado com sucesso'})
 
@@ -182,5 +223,33 @@ class ArticleSearchView(View):
 class ArticleDownloadView(View):
 
     def get(self, request, id):
-        # Falta: devolver a URL pré-assinada do S3 (services/s3.py).
-        return JsonResponse({'mensagem': 'Arquivo baixado com sucesso!'})
+        article = fetch_article(id)
+        if ((article is None) or (not article.s3_key)):
+            return error("Arquivo inexistente!", 404)
+
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
+                aws_session_token = settings.AWS_SESSION_TOKEN,
+                region_name = settings.AWS_S3_REGION_NAME
+            )
+
+            presigned_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params = {
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': article.s3_key
+                },
+                ExpiresIn = 3000
+            )
+
+            return JsonResponse({
+                'mensagem': 'Download do artigo já disponível!',
+                'download URL': presigned_url
+            })
+
+        except Exception as e:
+            return error(f"Erro {str(e)} identificado!", 500)
+        
