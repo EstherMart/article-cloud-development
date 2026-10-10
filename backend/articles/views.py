@@ -1,6 +1,7 @@
 """Rotas da API de artigos. As views só orquestram: a lógica de cada serviço AWS
 fica em `services/` (ver services/README.md)."""
 import json
+import logging
 
 from django.db import IntegrityError, transaction
 from django.db.models import Q
@@ -8,13 +9,16 @@ from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-import boto3
 from django.conf import settings
 
 from accounts.tokens import token_required
 from article_cloud.http import error, read_json
 
 from .models import Article, Author, Tag
+from services.dynamo_log import log_action
+from services.s3 import upload_pdf, delete_pdf, presigned_url
+
+logger = logging.getLogger(__name__)
 
 TITULO_DUPLICADO = 'Já existe um artigo com esse título'
 SEM_PERMISSAO = 'Você só pode alterar os seus próprios artigos'
@@ -40,6 +44,24 @@ def serialize(article):
     }
 
 
+def error(message, status):
+    return JsonResponse({'erro': message}, status=status)
+
+def fail(message, status, local):
+    logger.error(f"Erro em {local} (STATUS {status}): {message}")
+    return error(message, status)
+
+def read_json(request):
+    """Corpo da requisição como dict. Levanta ValueError se não for um objeto JSON."""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError as exc:
+        raise ValueError('JSON inválido') from exc
+    if not isinstance(body, dict):
+        raise ValueError('JSON inválido')
+    return body
+
+
 def clean_names(value):
     """Lista de nomes sem espaços sobrando e sem repetição, ou None se o formato for inválido."""
     if not isinstance(value, list) or not all(isinstance(name, str) for name in value):
@@ -60,12 +82,13 @@ def set_tags(article, names):
 def fetch_article(article_id):
     return articles_queryset().filter(id=article_id).first()
 
-
 @method_decorator(csrf_exempt, name='dispatch')
 class ArticleView(View):
 
     def get(self, request):
-        return JsonResponse([serialize(a) for a in articles_queryset()], safe=False)
+        articles = [serialize(a) for a in articles_queryset()]
+        log_action('READ', 'list', {'count': len(articles)})
+        return JsonResponse(articles, safe=False)
 
     @token_required
     def post(self, request):
@@ -79,43 +102,32 @@ class ArticleView(View):
             authors = json.loads(request.POST.get('authors', '[]'))
             tags = json.loads(request.POST.get('tags', '[]'))
         except json.JSONDecodeError:
-            return error('Authors e tags devem estar no formato JSON válido!', 400)
+            return fail('Authors e tags devem estar no formato JSON válido!', 400, 'ArticleView.post')
 
         authors = clean_names(authors)
         tags = clean_names(tags)
 
         if not title or not area or not authors:
-            return error('title, authors e area são obrigatórios', 400)
+            return fail('title, authors e area são obrigatórios', 400, 'ArticleView.post')
         if tags is None or not isinstance(abstract, str):
-            return error('tags deve ser uma lista de textos e abstract deve ser texto', 400)
+            return fail('tags deve ser uma lista de textos e abstract deve ser texto', 400, 'ArticleView.post')
         if not pdf_file:
-            return error('O envio do PDF é obrigatório!', 400)
+            return fail('O envio do PDF é obrigatório!', 400, 'ArticleView.post')
 
         try:
             with transaction.atomic():
                 article = Article.objects.create(title=title, area=area, user=request.user, abstract=abstract)
                 set_authors(article, authors)
                 set_tags(article, tags)
-
-                s3_client = boto3.client(
-                    's3',
-                    aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-                    aws_session_token = settings.AWS_SESSION_TOKEN,
-                    region_name = settings.AWS_S3_REGION_NAME
-                )
-                s3_key = f"artigos/{article.id}-{pdf_file.name}"
-                s3_client.upload_fileobj(
-                    pdf_file,
-                    settings.AWS_STORAGE_BUCKET_NAME,
-                    s3_key
-                )
-                article.s3_key = s3_key
+                article.s3_key = upload_pdf(article.id, pdf_file)
                 article.save()
         except IntegrityError:
-            return error(TITULO_DUPLICADO, 409)
+            return fail(TITULO_DUPLICADO, 409, 'ArticleView.post')
         except Exception as e:
-            return error(f"Erro {str(e)} identificado!", 500)
+            return fail(f"Erro {str(e)} identificado!", 500, 'ArticleView.post')
+
+        created_article = serialize(fetch_article(article.id))
+        log_action('CREATE', str(article.id), created_article)
 
         return JsonResponse(
             {'mensagem': 'Artigo cadastrado com sucesso', 'article': serialize(fetch_article(article.id))},
@@ -129,21 +141,24 @@ class ArticleDetailsView(View):
     def get(self, request, id):
         article = fetch_article(id)
         if article is None:
-            return error('Artigo de id inexistente', 404)
-        return JsonResponse(serialize(article))
+            return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.get')
+
+        data = serialize(article)
+        log_action('READ', str(id), data)
+        return JsonResponse(data)
 
     @token_required
     def put(self, request, id):
         article = fetch_article(id)
         if article is None:
-            return error('Artigo de id inexistente', 404)
+            return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.put')
         if article.user_id != request.user.id:
-            return error(SEM_PERMISSAO, 403)
+            return fail(SEM_PERMISSAO, 403, 'ArticleDetailsView.put')
 
         try:
             body = read_json(request)
-        except ValueError as exc:
-            return error(str(exc), 400)
+        except ValueError as e:
+            return fail(str(e), 400, 'ArticleDetailsView.put')
 
         title = body.get('title')
         area = body.get('area')
@@ -151,9 +166,9 @@ class ArticleDetailsView(View):
         tags = clean_names(body['tags']) if 'tags' in body else None
 
         if not title or not area or not authors:
-            return error('title, authors e area são obrigatórios', 400)
+            return fail('title, authors e area são obrigatórios', 400, 'ArticleDetailsView.put')
         if 'tags' in body and tags is None:
-            return error('tags deve ser uma lista de textos', 400)
+            return fail('tags deve ser uma lista de textos', 400, 'ArticleDetailsView.put')
 
         try:
             with transaction.atomic():
@@ -166,7 +181,10 @@ class ArticleDetailsView(View):
                 if tags is not None:
                     set_tags(article, tags)
         except IntegrityError:
-            return error(TITULO_DUPLICADO, 409)
+            return fail(TITULO_DUPLICADO, 409, 'ArticleDetailsView.put')
+
+        updated_article = serialize(fetch_article(id))
+        log_action('UPDATE', str(id),  updated_article)
 
         return JsonResponse({'mensagem': 'Artigo atualizado com sucesso', 'article': serialize(fetch_article(id))})
 
@@ -174,25 +192,21 @@ class ArticleDetailsView(View):
     def delete(self, request, id):
         article = fetch_article(id)
         if article is None:
-            return error('Artigo de id inexistente', 404)
+            return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.delete')
         if article.user_id != request.user.id:
-            return error(SEM_PERMISSAO, 403)
+            return fail(SEM_PERMISSAO, 403, 'ArticleDetailsView.delete')
         if (article.s3_key):
             try:
-                s3_client = boto3.client(
-                    's3',
-                    aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-                    aws_session_token = settings.AWS_SESSION_TOKEN,
-                    region_name = settings.AWS_S3_REGION_NAME
-                )
-                s3_client.delete_object(
-                    Bucket = settings.AWS_STORAGE_BUCKET_NAME,
-                    Key = article.s3_key
-                )
+                delete_pdf(article.s3_key)
             except Exception as e:
-                return error(f"Erro {str(e)} identificado!", 500)
+                return fail(f"Erro {str(e)} identificado!", 500, 'ArticleDetailsView.delete')
+            
+        # Falta: Invalidar o cache.
+
+        deleted_data = serialize(article)
         article.delete()
+        log_action('DELETE', str(id), deleted_data)
+
         return JsonResponse({'mensagem': 'Artigo deletado com sucesso'})
 
 
@@ -206,7 +220,10 @@ class ArticleSearchView(View):
             | Q(area__icontains=query)
             | Q(tags__name__icontains=query)
         ).distinct()
-        return JsonResponse([serialize(a) for a in articles], safe=False)
+
+        search_results = [serialize(a) for a in articles]
+        log_action('READ', 'Search', {'query': query, 'count': len(search_results)})
+        return JsonResponse(search_results, safe=False)
 
 
 class ArticleDownloadView(View):
@@ -214,31 +231,18 @@ class ArticleDownloadView(View):
     def get(self, request, id):
         article = fetch_article(id)
         if ((article is None) or (not article.s3_key)):
-            return error("Arquivo inexistente!", 404)
+            return fail("Arquivo inexistente!", 404, 'ArticleDownloadView.get')
 
         try:
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-                aws_session_token = settings.AWS_SESSION_TOKEN,
-                region_name = settings.AWS_S3_REGION_NAME
-            )
+            url = presigned_url(article.s3_key)
 
-            presigned_url = s3_client.generate_presigned_url(
-                'get_object',
-                Params = {
-                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                    'Key': article.s3_key
-                },
-                ExpiresIn = 3000
-            )
+            log_action('READ', str(id), {'s3_key': article.s3_key})
 
             return JsonResponse({
                 'mensagem': 'Download do artigo já disponível!',
-                'download URL': presigned_url
+                'download URL': url
             })
 
         except Exception as e:
-            return error(f"Erro {str(e)} identificado!", 500)
+            return fail(f"Erro {str(e)} identificado!", 500, 'ArticleDownloadView.get')
         

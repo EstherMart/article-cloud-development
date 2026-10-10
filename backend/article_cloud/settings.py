@@ -116,8 +116,12 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Credenciais de acesso AWS
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN', '') 
+
+# Servicos AWS
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'article-cloud')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+AWS_DYNAMODB_TABLE_NAME = os.environ.get('AWS_DYNAMODB_TABLE_NAME', 'LogsArtigos')
