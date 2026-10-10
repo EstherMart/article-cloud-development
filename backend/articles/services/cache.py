@@ -16,30 +16,54 @@ Chaves:
     artigos:recentes   lista dos mais recentes
     busca:{termos}     resultado de uma busca (invalidar com o padrão busca:*)
 """
+
+import os
+import json
+import logging
+import redis
+
+logger = logging.getLogger(__name__)
+
 CACHE_TTL = 300  # segundos
+REDIS_CLIENT = None
 
 
 def get_client():
-    """Conexão com o Redis a partir de REDIS_URL (redis.Redis.from_url).
+    global REDIS_CLIENT
+    if REDIS_CLIENT is None:
+        url = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
+        REDIS_CLIENT = redis.Redis.from_url(url, decode_responses = True)
+    return REDIS_CLIENT
 
-    Crie uma vez por processo. Não guarde estado de aplicação em memória local:
-    a API roda em várias instâncias no Auto Scaling.
-    """
-    raise NotImplementedError
 
+def get_or_set(key, loader, ttl = CACHE_TTL):
+    client = get_client()
 
-def get_or_set(key, loader, ttl=CACHE_TTL):
-    """Cache-aside. `loader` é uma função sem argumentos que consulta o RDS.
+    try:
+        cached_data = client.get(key)
+        if cached_data is not None:
+            return json.loads(cached_data)
+    except Exception as e:
+        logger.error(f"Redis não conseguiu ler {key}: {e}")
 
-    Se o Redis estiver fora do ar, chame o loader direto: o cache nunca deve
-    derrubar a API.
-    """
-    raise NotImplementedError
+    data = loader()
 
+    try:
+        client.set(key, json.dumps(data), ex = ttl)
+    except Exception as e:
+        logger.error(f"Redis não conseguiu salvar a chave {key}: {e}")
+
+    return data
 
 def invalidate_article(article_id):
-    """Apaga artigo:{id}, artigos:recentes e as chaves busca:*.
+    client = get_client()
 
-    Para busca:* use scan_iter(match='busca:*') e delete. Evite KEYS em produção.
-    """
-    raise NotImplementedError
+    try:
+        keys = [f'artigo:{article_id}', 'artigos:recentes']
+        client.delete(*keys)
+
+        for key in client.scan_iter(match = 'busca:*'):
+            client.delete(key)
+
+    except Exception as e:
+        logger.error(f"Erro ao invalidar cache de {article_id}: {e}")
