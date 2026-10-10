@@ -1,0 +1,40 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 401 >>
+stream
+BT /F2 18 Tf 60 780 Td (Modelagem de Dados para Artigos e Autores) Tj ET
+BT /F1 12 Tf 60 740 Td (Resumo) Tj ET
+BT /F1 12 Tf 60 720 Td (O modelo relaciona artigos, autores e palavras-chave por tabelas de ligação.) Tj ET
+BT /F1 12 Tf 60 700 Td (O título é único para evitar cadastros duplicados do mesmo trabalho.) Tj ET
+BT /F1 12 Tf 60 660 Td (Palavras-chave: PostgreSQL, modelagem, relação N:N.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000703 00000 n 
+0000000800 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+902
+%%EOF
