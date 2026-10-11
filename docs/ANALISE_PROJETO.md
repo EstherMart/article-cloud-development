@@ -2,15 +2,17 @@
 
 Base: *Especificação do Trabalho Prático 1* (Desenvolvimento de Software para Nuvem), tema "Repositório de artigos científicos". Prazo da spec: 10/10/2026. **O grupo informou que foi adiado para 12/10/2026.** A arguição é na terça, 13/10.
 Escopo: `origin/main` (commit `000391e`) e as branches remotas `origin/backend-AWS` e `origin/funcoes-worker` (seção 1).
-Atualizada em 11/10/2026, depois de mesclar a `funcoes-worker` na `main` local e corrigir os itens 1 a 11 da seção 3.1. Os 75 testes unitários passam (6 de integração pulados). As alterações estão no working tree, sem commit e sem push.
+Atualizada em 11/10/2026, depois de mesclar a `funcoes-worker` na `main` local e corrigir os itens 1 a 11 da seção 3.1. Os 81 testes unitários passam (6 de integração pulados). As alterações estão no working tree, sem commit e sem push.
 
 ## 0. Resumo
 
-- **A `main` local agora carrega e os testes passam** (75 unitários, 6 de integração pulados). O import quebrado veio com o merge da `funcoes-worker`; o `presigned_url` e os testes foram corrigidos à mão.
+- **A `main` local agora carrega e os testes passam** (81 unitários, 6 de integração pulados). O import quebrado veio com o merge da `funcoes-worker`; o `presigned_url` e os testes foram corrigidos à mão.
 - **Implementado, mas nunca rodado na AWS:** S3, Redis, DynamoDB, SNS e worker, front e autenticação.
 - **Corrigidos hoje (3.1 itens 1 a 11):** download do PDF, testes, `error` e `read_json` duplicados, log de READ, variáveis de ambiente, validação do PDF, erros sem vazar exceção, ordem do DELETE e limpeza do upload órfão.
 - **Também corrigidos:** `/health/`, `download_url` e `ALLOWED_HOSTS` (itens 12, 13 e 15). A paginação ficou fora (item 14).
-- **Ainda abertos:** estilo (item 16) e a falha do SNS depois de salvar o artigo (3.2 item 2).
+- **Também feitos:** limpeza de estilo (item 16), `gunicorn` e `GEMINI_*`.
+- **Falha do SNS resolvida:** rota de reprocessamento `POST /articles/<id>/reprocess/`; falta só o botão no front.
+- **Nada aberto no código da 3.1**, além dos itens opcionais 17, 18 e 22.
 - **Falta a Parte 2 inteira** (ALB, Auto Scaling, vídeo) e criar e validar todos os recursos na AWS.
 - **Git:** a `main` local está 1 commit à frente da `origin/main` (o da `funcoes-worker`), mais as alterações sem commit.
 
@@ -72,8 +74,9 @@ Penalidade de cada serviço ausente: −1,5 ponto. Em código, só **Auto Scalin
 | # | Problema | Local | Correção |
 |---|---|---|---|
 | 14 | **Decidido deixar fora:** sem paginação em `GET /articles/`; "Meus artigos" filtra no front. O cache guarda a lista inteira numa chave só | `ArticleView.get` | Registrar como limitação conhecida |
-| 16 | Estilo: espaços em volta de `=` em argumentos nomeados, parênteses em `if (article.s3_key)`, espaços no fim de linha, arquivos sem newline final, imports não usados (`json` e `settings` em partes) | `views.py`, `cache.py`, `s3.py`, `dynamo_log.py`, `settings.py` | Limpar |
+| 16 | ✅ Estilo limpo em `views.py`, `cache.py`, `s3.py`, `dynamo_log.py`, `settings.py` (espaços, imports, newline final). Docstring do `dynamo_log.py` atualizada | — | — |
 | 17 | `get_or_set` cacheia `None` (artigo inexistente) como `"null"`: vira cache miss a cada GET de id errado | `cache.py` | Opcional |
+| 23 | ✅ O cliente Redis agora tem `socket_connect_timeout` e `socket_timeout` de 2 s. Antes, um endpoint errado travava cada requisição pelo timeout padrão do sistema | `cache.py` | — |
 | 18 | `invalidate_article` apaga `busca:*` com `scan_iter`; o custo cresce com o número de buscas | `cache.py` | Anotar para a arguição |
 | 22 | O POST não valida a assinatura `%PDF` do arquivo, só o `Content-Type` | `ArticleView.post` | Opcional |
 
@@ -90,7 +93,7 @@ Penalidade de cada serviço ausente: −1,5 ponto. Em código, só **Auto Scalin
 | # | Problema | Correção |
 |---|---|---|
 | 1 | ✅ Resolvido: os testes simulam o SNS e o S3 em `tests/unit/base.py` | — |
-| 2 | **Aberto.** **Falha do SNS devolve 503 depois de salvar o artigo.** O front mostra erro, mas o artigo existe com status `ERRO`; cadastrar de novo com o mesmo título dá 409. O próprio `README_INTEGRACAO_FUNCOES.md` admite que não há reenvio | Decidir: tentar de novo, apagar o artigo ou criar rota de reprocessamento |
+| 2 | ✅ Resolvido: a resposta 503 do POST traz `article_id` e a rota `POST /articles/<id>/reprocess/` (só o dono, só status `ERRO`) republica o evento no SNS. **Falta o botão no front** (opcional) | — |
 | 3 | **Quatro serviços diferentes lidos do mesmo `.env` com nomes diferentes.** O worker lê `DB_*`, `SQS_QUEUE_URL`, `REDIS_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`. `GEMINI_*` não está no `.env.example` | Documentar no `.env.example` ou trocar por Amazon Translate (3.3) |
 | 4 | **O worker acessa o RDS por SQL direto** (`UPDATE articles_article`), não pelo Django. Se o modelo mudar de nome de tabela ou coluna, quebra sem aviso | Anotar como decisão. O teste `test_pipeline_e2e.py` cobre |
 | 5 | **Uma instância só do worker e uma mensagem por vez** (`MaxNumberOfMessages=1`). Suficiente para o trabalho | Anotar |
@@ -98,9 +101,33 @@ Penalidade de cada serviço ausente: −1,5 ponto. Em código, só **Auto Scalin
 | 7 | O `README.md` do worker ainda traz instruções de tarefa | Limpar (seção 9) |
 | 8 | O worker invalida o cache **depois** de gravar. Entre o `save_result` e o `delete`, um GET pode servir o artigo antigo por até 300 s | Aceitável (TTL). Anotar |
 
-### 3.3 Decisão pendente: Amazon Translate ou Gemini
+### 3.3 Tradução: Gemini (decidido)
 
-O worker usa Gemini (`google-genai`): precisa de chave de API externa, de `GEMINI_MODEL` e de saída HTTPS pela internet. No Learner Lab isso funciona se a EC2 tiver rota para a internet; o custo e o limite da chave são do grupo. Amazon Translate usaria a LabRole e entraria no relatório como serviço AWS. A spec pede só "tradução"; ambos servem. Se ficar com Gemini, documente as variáveis e **nunca** versione a chave.
+O worker usa Gemini (`google-genai`). Precisa de `GEMINI_API_KEY` e `GEMINI_MODEL` no `.env` do worker, de saída HTTPS pela internet e de cota na chave. A chave nunca vai para o git. Na arguição: o serviço de tradução não é da AWS; o requisito de desacoplamento (SNS/SQS) continua cumprido.
+
+### 3.4 Roteiro `docs/aws/` revisado contra o código final
+
+Revisado em 11/10 contra a `main` local. Armadilhas encontradas e corrigidas nos arquivos:
+
+| Onde | Problema | Correção |
+|---|---|---|
+| `04-dynamodb.md` | Chave `article_id` como **Número**. O código grava texto: toda gravação falharia e o erro seria engolido (sem log, sem aviso) | Tipo **String**, com aviso e passo de conferir o item |
+| `02-ec2-api.md` | `runserver` e API morrendo com o SSH | `gunicorn` e unidade `systemd`; nota do front e CORS |
+| `00-preparacao.md` | Sem lista de riscos do `.env` | Tabela: senha com caractere especial, `S3_BUCKET` vazio, `ALLOWED_HOSTS` com o ALB, `SECRET_KEY` igual nas instâncias |
+| `03-s3.md` | Instruções de "implementar", limite de 20 MB | Descreve o código atual (10 MB, 415, 413, 502) e os sintomas de erro |
+| `05-elasticache.md` | Sem diagnóstico de cache lento | Tabela de sintomas; timeouts de 2 s no código |
+| `06-sns-sqs.md` | Formato sem `event`; falha do SNS sem tratamento | Formato atual, 503 com `article_id`, rota `reprocess` |
+| `07-ec2-worker.md` | Citava Translate; faltava Gemini, internet, `systemd` | Gemini, variáveis, tabela de erros |
+| `08` e `09` | Teste sem UPDATE, download e reprocesso; Translate | Teste completo de 11 passos; Gemini |
+| `01-rds.md` | Criar usuário pelo shell | Usa `/auth/register/` |
+
+Riscos que ficam e não têm correção de código:
+
+- **Falha de log do DynamoDB é silenciosa**, por decisão. Só aparece em `journalctl`.
+- **`S3_BUCKET` e `DYNAMODB_TABLE` têm valor padrão**: variável esquecida aponta para um recurso que não é seu, sem erro na subida.
+- **Credenciais do Learner Lab expiram**: URL assinada e o CLI deixam de funcionar.
+- **O Redis fora do ar custa ~2 s por requisição** até o cache voltar.
+- **O front não tem hospedagem definida** (decisão aberta).
 
 ## 4. Código que PRECISA ser entregue (e o que já testa na AWS)
 
@@ -108,11 +135,11 @@ O worker usa Gemini (`google-genai`): precisa de chave de API externa, de `GEMIN
 
 | Prioridade | Entrega | Arquivo | Estado |
 |---|---|---|---|
-| 1 | `gunicorn` no `requirements.txt` e user data da EC2 | `backend`, `infra/` | não existe |
-| 2 | Decidir a falha do SNS (3.2 item 2) | `views.py` | aberto |
-| 3 | Atualizar o `.env.example` com `GEMINI_*` (ou trocar por Amazon Translate) | `.env.example`, `worker/` | aberto |
+| 1 | User data da EC2 (`gunicorn` já está no `requirements.txt`) | `infra/` | não existe |
+| 2 | Botão "Reprocessar" no front para artigos em `ERRO` (opcional) | `frontend/` | aberto |
+| 3 | `GEMINI_*` no `.env.example` feito; Gemini decidido (3.3) | `worker/` | ✅ feito |
 | 4 | ALB, Launch Template, ASG, políticas de CPU, vídeo | `infra/` | não existe |
-| 5 | Limpeza de estilo (3.1 item 16) | `views.py`, `cache.py` etc. | aberto |
+| 5 | Limpeza de estilo (3.1 item 16) | vários | ✅ feito |
 | 6 | Paginação e filtro `?user=` | `views.py`, `meus_artigos.js` | opcional |
 | ✅ | Front, auth, CORS, Redis, DynamoDB, S3, SNS, worker e os itens 1 a 11 da 3.1 | vários | na `main` local, sem push |
 
@@ -151,8 +178,8 @@ O worker usa Gemini (`google-genai`): precisa de chave de API externa, de `GEMIN
 | S3 (upload, download, delete, validação) | 🟡 pronto, sem validação na AWS |
 | DynamoDB (CREATE, UPDATE, DELETE) | 🟡 pronto, sem validação na AWS |
 | Redis | 🟡 pronto, sem validação na AWS |
-| SNS e worker | 🟡 pronto, sem validação na AWS; falha do SNS sem reenvio (3.2 item 2) |
-| Testes unitários | ✅ 75 passam |
+| SNS e worker | 🟡 pronto, sem validação na AWS; reprocessamento por rota |
+| Testes unitários | ✅ 81 passam |
 | `/health/` | ✅ |
 | `gunicorn`, paginação | ❌ |
 
@@ -195,6 +222,8 @@ A documentação em `docs/aws/` cobre o passo a passo de todos os serviços. Ela
 | Criar artigo | Chips de autores e tags, PDF, área e resumo; campo `conteudo` removido |
 | Detalhe do artigo | Página completa com download |
 | Erros no front | Alerta Bootstrap com a mensagem da API |
+| Tradução | Gemini (API externa; chave só no `.env` do worker) |
+| Falha do SNS | Artigo fica em `ERRO`; o dono reenvia por `POST /articles/<id>/reprocess/` |
 | Log no DynamoDB | `services/dynamo_log.py`, tabela única `logs_crud`, falha de log não derruba o CRUD. **Só escrita é logada** (leitura fora, para o cache valer) |
 | Cache | Redis, TTL de 300 s, invalidação em POST, PUT, DELETE e no worker |
 | Validação do PDF | `Content-Type` e 10 MB, sem validar a assinatura |
@@ -203,16 +232,14 @@ A documentação em `docs/aws/` cobre o passo a passo de todos os serviços. Ela
 
 **Abertas**
 
-1. **Tradução:** Amazon Translate ou Gemini (3.3). O código atual usa Gemini.
-2. **Falha do SNS depois de salvar o artigo:** reenviar, apagar ou reprocessar (3.2 item 2).
-3. **Onde fica o front na AWS:** S3 estático ou nginx na EC2 da API.
-4. **Fora do escopo (decidido):** paginação e filtro `?user=`.
+1. **Onde fica o front na AWS:** S3 estático ou nginx na EC2 da API.
+2. **Fora do escopo (decidido):** paginação e filtro `?user=`.
 
 ## 8. Ordem sugerida até o prazo (12/10)
 
 1. Commitar as alterações, fazer push da `main` e apagar as branches `funcoes-worker` e `backend-AWS`.
-2. Fechar os itens abertos pequenos: `gunicorn` no `requirements.txt`, `GEMINI_*` no `.env.example`, limpeza de estilo.
-3. Decidir a falha do SNS (3.2 item 2).
+2. ✅ Itens pequenos fechados: `gunicorn` no `requirements.txt`, `GEMINI_*` no `.env.example`, limpeza de estilo.
+3. ✅ Falha do SNS resolvida (rota de reprocessamento).
 4. Criar RDS, bucket, tabela do DynamoDB e cluster Redis. Subir a API numa EC2. Testar o fluxo no front.
 5. Criar tópico, fila e DLQ. Subir a EC2 do worker. Teste ponta a ponta (`test_pipeline_e2e.py`).
 6. Parte 2: launch template, ALB, ASG, políticas de 70% e 25%. Teste de carga e vídeo.

@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from botocore.exceptions import BotoCoreError
 from django.core.files.uploadedfile import SimpleUploadedFile
 import json
@@ -120,3 +121,48 @@ class ArticleCreateTests(ApiTestCase):
         response = self.post_article()
         self.assertEqual(response.status_code, 502)
         self.assertNotIn('BotoCoreError', response.json()['erro'])
+
+    def test_503_devolve_o_id_do_artigo_salvo(self):
+        self.sns.publish.side_effect = RuntimeError('SNS indisponível')
+        response = self.post_article()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['article_id'], Article.objects.get().id)
+
+
+class ArticleReprocessTests(ApiTestCase):
+    """POST /articles/<id>/reprocess/"""
+
+    def article_em_erro(self):
+        self.sns.publish.side_effect = RuntimeError('SNS indisponível')
+        article_id = self.post_article().json()['article_id']
+        self.sns.publish.side_effect = None
+        self.sns.publish.reset_mock()
+        return article_id
+
+    def test_reenvia_evento_e_volta_para_pendente(self):
+        article_id = self.article_em_erro()
+        response = self.client.post(f'/articles/{article_id}/reprocess/')
+        self.assertEqual(response.status_code, 200)
+        self.sns.publish.assert_called_once()
+        self.assertEqual(Article.objects.get(id=article_id).processing_status, 'PENDENTE')
+
+    def test_artigo_que_nao_esta_em_erro_retorna_409(self):
+        article_id = self.create_article()
+        self.assertEqual(self.client.post(f'/articles/{article_id}/reprocess/').status_code, 409)
+
+    def test_falha_de_novo_mantem_erro_e_retorna_503(self):
+        article_id = self.article_em_erro()
+        self.sns.publish.side_effect = RuntimeError('SNS indisponível')
+        self.assertEqual(self.client.post(f'/articles/{article_id}/reprocess/').status_code, 503)
+        self.assertEqual(Article.objects.get(id=article_id).processing_status, 'ERRO')
+
+    def test_outro_usuario_retorna_403(self):
+        article_id = self.article_em_erro()
+        outro = User.objects.create_user(username='outro', password='senha-forte-123')
+        self.login_as(outro)
+        self.assertEqual(self.client.post(f'/articles/{article_id}/reprocess/').status_code, 403)
+
+    def test_sem_token_retorna_401(self):
+        article_id = self.article_em_erro()
+        self.logout()
+        self.assertEqual(self.client.post(f'/articles/{article_id}/reprocess/').status_code, 401)

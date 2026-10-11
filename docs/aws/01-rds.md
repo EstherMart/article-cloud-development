@@ -61,8 +61,8 @@ O `settings.py` já lê essas variáveis. Nenhuma mudança de código é necess�
 1. No terminal: `cd backend && source .venv/bin/activate && set -a; source .env; set +a`.
 2. Teste a rede: `nc -zv "$DB_HOST" 5432`. Deve dizer "succeeded".
 3. Rode `python manage.py migrate`. Deve listar as migrations `articles.0001` a `0004` como `OK`.
-4. Crie um usuário: `python manage.py shell` e depois `from django.contrib.auth.models import User; User.objects.create_user("teste", password="123456")`.
-5. Suba a API (`python manage.py runserver`) e cadastre um artigo com o `curl` do `backend/README.md`.
+4. Suba a API (`python manage.py runserver`) e crie o usuário pela própria API: `curl -X POST localhost:8000/auth/register/ -H 'Content-Type: application/json' -d '{"username":"teste","password":"senha-forte-123"}'`.
+5. Faça login em `/auth/login/`, pegue o token e cadastre um artigo com o `curl` do `backend/README.md`.
 6. Pare e suba a API de novo. `GET /articles/` deve devolver o artigo. Isso prova que ele foi para o RDS.
 
 Opcional: conectar com o `psql` para olhar o banco por dentro. O `global-bundle.pem` é o certificado raiz da AWS e não vai para o git (o `.gitignore` já ignora `*.pem`).
@@ -81,6 +81,7 @@ No console: RDS > sua instância > aba **Monitoring**. O gráfico **DatabaseConn
 | `password authentication failed` | Usuário ou senha errados |
 | `database "..." does not exist` | Falta criar o banco (passo 10) |
 | Tabelas criadas no SQLite | `DB_HOST` vazio ou `.env` não carregado |
+| Senha cortada ou `FATAL: password authentication failed` mesmo certa | A senha tem caractere especial e o `source .env` a leu errado. Use só letras e números |
 
 ## Apagar
 RDS > **Bancos de dados** > selecione > **Ações > Excluir**. Desmarque "Criar snapshot final" e "Reter backups automatizados". Confirme digitando `delete me`.

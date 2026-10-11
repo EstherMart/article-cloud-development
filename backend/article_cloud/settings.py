@@ -113,7 +113,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 STATIC_URL = 'static/'
 
 # Serviços AWS (na EC2 as credenciais vêm da IAM Role)

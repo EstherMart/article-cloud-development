@@ -106,10 +106,26 @@ Seu IP --22-------> sg-worker --5432--> sg-rds
 DJANGO_SECRET_KEY=<chave gerada>
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=<IP público da EC2>
+CORS_ALLOWED_ORIGINS=<origem de onde o front é aberto, ex.: http://localhost:8080>
 AWS_REGION=us-east-1
 ```
 
 O `DJANGO_ALLOWED_HOSTS` só dá para preencher depois de criar a EC2 ([etapa 2](02-ec2-api.md)).
+
+### Cuidados com o `.env` (o que pode dar errado)
+
+| Risco | O que acontece | Como evitar |
+|---|---|---|
+| Os scripts usam `source .env` | Senha com `$`, `#`, `!`, espaço ou aspas quebra a leitura e o valor chega cortado | Gere a senha do RDS só com letras e números, ou coloque o valor entre aspas simples |
+| `S3_BUCKET` ou `DYNAMODB_TABLE` vazios | O código usa os padrões (`article-cloud` e `logs_crud`). O upload vai para outro bucket e dá 502, sem erro óbvio | Preencha sempre as duas variáveis e confira com `env | grep -E 'S3_BUCKET|DYNAMODB'` |
+| `REDIS_URL` vazio | O código tenta `127.0.0.1:6379`. A API funciona sem cache e grava erro no log | Preencha com o endpoint do ElastiCache |
+| `DJANGO_DEBUG=False` sem `DJANGO_SECRET_KEY` | O Django não sobe (`ImproperlyConfigured`) | Defina a chave primeiro |
+| `DJANGO_ALLOWED_HOSTS` sem o IP certo | Erro 400 `DisallowedHost`. Com o ALB (Parte 2), o health check chega com o IP **privado** da instância e falha | Na Parte 2, use `*` ou liste o DNS do ALB e a faixa da VPC |
+| Chaves `AWS_ACCESS_KEY_ID` no `.env` da EC2 | Elas sobrepõem a LabRole e vencem junto com a sessão do lab | Não coloque chaves AWS no `.env` da EC2 |
+| `DJANGO_SECRET_KEY` diferente entre instâncias | O token de login de uma instância é recusado pela outra (Parte 2) | Use a mesma chave em todas as instâncias da API |
+| Worker sem `GEMINI_API_KEY` e `GEMINI_MODEL` | Todo artigo termina em `ERRO` | Preencha no `.env` do worker (ver [etapa 7](07-ec2-worker.md)) |
+
+Modelo completo de `.env`: `backend/.env.example`.
 
 ---
 [Índice](README.md) | [1. RDS PostgreSQL →](01-rds.md)

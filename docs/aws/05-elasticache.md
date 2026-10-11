@@ -30,12 +30,20 @@ Os nomes abaixo seguem o console em português. Entre parênteses vai o nome em 
 
 Clique em **Criar**. Espere **Disponível**. Copie o **Ponto de extremidade primário** (Primary endpoint), sem a porta. No `.env`: `REDIS_URL=redis://<endpoint>:6379/0`.
 
-## Implementar (`backend/articles/services/cache.py`)
-- `get_client()`: `redis.Redis.from_url(REDIS_URL)`.
+## Como o código usa o Redis (`backend/articles/services/cache.py`)
+- `get_client()`: `redis.Redis.from_url(REDIS_URL)` com timeouts de 2 s (conexão e leitura), para que um endpoint errado não trave a API.
 - `get_or_set(key, loader, ttl=300)`: padrão cache-aside com JSON.
 - `invalidate_article(id)`: apaga `artigo:{id}`, `artigos:recentes` e `busca:*` (use `scan_iter`, nunca `KEYS`).
 - Se o Redis falhar, chame o `loader` direto. O cache nunca derruba a API.
 - Nunca guarde PDF no Redis.
+
+### O que pode dar errado
+| Sintoma | Causa provável |
+|---|---|
+| API lenta, cada requisição demora ~2 s ou mais | Endpoint errado ou `sg-redis` sem a regra do `sg-api`: cada leitura espera o timeout e cai no RDS. O log mostra `Redis não conseguiu ler` |
+| API funciona, mas `keys 'artigo:*'` vem vazio | `REDIS_URL` vazio (usa `127.0.0.1`) ou apontando para outro cache |
+| `Connection reset` ou erro de protocolo | Criptografia em trânsito ligada. O código usa `redis://`; com ela ligada, seria `rediss://` |
+| O worker não derruba o cache | O worker precisa de `REDIS_URL` e do `sg-worker` liberado no `sg-redis` (6379). Se falhar, só grava no log e o cache expira em 5 minutos |
 
 ## Testar
 O Redis só é acessível de dentro da VPC. Teste pela EC2 da API ([etapa 2](02-ec2-api.md)):

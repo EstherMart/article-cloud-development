@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from botocore.exceptions import BotoCoreError, ClientError
 
 from accounts.tokens import token_required
 from article_cloud.http import error, read_json
@@ -19,13 +20,13 @@ from .services.dynamo_log import log_action
 from .services.s3 import upload_pdf, delete_pdf, presigned_url
 from .services.cache import get_or_set, invalidate_article
 from .services.messaging import publish_article_created
-from botocore.exceptions import BotoCoreError, ClientError
 
 logger = logging.getLogger(__name__)
 
 TITULO_DUPLICADO = 'Já existe um artigo com esse título'
 SEM_PERMISSAO = 'Você só pode alterar os seus próprios artigos'
 ERRO_ARMAZENAMENTO = 'Falha ao acessar o armazenamento de arquivos'
+ERRO_PROCESSAMENTO = 'O artigo foi salvo, mas não foi possível iniciar o processamento.'
 MAX_PDF_BYTES = 10 * 1024 * 1024
 
 
@@ -62,6 +63,25 @@ def discard_pdf(s3_key):
         logger.exception('Não foi possível apagar %s do S3', s3_key)
 
 
+def start_processing(article):
+    """Publica o evento no SNS. Se falhar, marca o artigo como ERRO e devolve False."""
+    try:
+        publish_article_created(article.id, article.s3_key, settings.AWS_STORAGE_BUCKET_NAME)
+    except (BotoCoreError, ClientError, RuntimeError):
+        logger.exception('Não foi possível publicar o artigo %s no SNS.', article.id)
+        status = Article.ProcessingStatus.ERRO
+        ok = False
+    else:
+        status = Article.ProcessingStatus.PENDENTE
+        ok = True
+    try:
+        Article.objects.filter(id=article.id).update(processing_status=status)
+    except DatabaseError:
+        logger.exception('Não foi possível gravar o status do artigo %s.', article.id)
+    invalidate_article(article.id)
+    return ok
+
+
 def clean_names(value):
     """Lista de nomes sem espaços sobrando e sem repetição, ou None se o formato for inválido."""
     if not isinstance(value, list) or not all(isinstance(name, str) for name in value):
@@ -82,11 +102,12 @@ def set_tags(article, names):
 def fetch_article(article_id):
     return articles_queryset().filter(id=article_id).first()
 
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ArticleView(View):
 
     def get(self, request):
-        
+
         def db_loader():
             return [serialize(a) for a in articles_queryset()]
         articles = get_or_set('artigos:recentes', db_loader)
@@ -143,26 +164,10 @@ class ArticleView(View):
         invalidate_article(article.id)
         log_action('CREATE', str(article.id), created_article)
 
-        try:
-            publish_article_created(
-                article.id,
-                article.s3_key,
-                settings.AWS_STORAGE_BUCKET_NAME,
-            )
-        except (BotoCoreError, ClientError, RuntimeError):
-            logger.exception('Não foi possível publicar o artigo %s no SNS.', article.id)
-            try:
-                Article.objects.filter(id=article.id).update(
-                    processing_status=Article.ProcessingStatus.ERRO,
-                )
-            except DatabaseError:
-                logger.exception('Não foi possível marcar o artigo %s como ERRO.', article.id)
-            invalidate_article(article.id)
-            return fail(
-                'O artigo foi salvo, mas não foi possível iniciar o processamento.',
-                503,
-                'ArticleView.post',
-            )
+        if not start_processing(article):
+            body = {'erro': ERRO_PROCESSAMENTO, 'article_id': article.id}
+            logger.error('Erro em ArticleView.post (STATUS 503): %s', ERRO_PROCESSAMENTO)
+            return JsonResponse(body, status=503)
 
         return JsonResponse(
             {'mensagem': 'Artigo cadastrado com sucesso', 'article': serialize(fetch_article(article.id))},
@@ -177,10 +182,8 @@ class ArticleDetailsView(View):
 
         def db_loader():
             article = fetch_article(id)
-            if article:
-                return serialize(article) 
-            return None
-        
+            return serialize(article) if article else None
+
         article_data = get_or_set(f'artigo:{id}', db_loader)
         if article_data is None:
             return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.get')
@@ -225,7 +228,7 @@ class ArticleDetailsView(View):
 
         updated_article = serialize(fetch_article(id))
         invalidate_article(id)
-        log_action('UPDATE', str(id),  updated_article)
+        log_action('UPDATE', str(id), updated_article)
 
         return JsonResponse({'mensagem': 'Artigo atualizado com sucesso', 'article': serialize(fetch_article(id))})
 
@@ -246,6 +249,24 @@ class ArticleDetailsView(View):
         log_action('DELETE', str(id), deleted_data)
 
         return JsonResponse({'mensagem': 'Artigo deletado com sucesso'})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ArticleReprocessView(View):
+    """Reenvia ao worker um artigo cujo processamento não foi iniciado ou falhou."""
+
+    @token_required
+    def post(self, request, id):
+        article = fetch_article(id)
+        if article is None:
+            return fail('Artigo de id inexistente', 404, 'ArticleReprocessView.post')
+        if article.user_id != request.user.id:
+            return fail(SEM_PERMISSAO, 403, 'ArticleReprocessView.post')
+        if article.processing_status != Article.ProcessingStatus.ERRO:
+            return fail('Só é possível reprocessar artigos com status ERRO', 409, 'ArticleReprocessView.post')
+        if not start_processing(article):
+            return fail(ERRO_PROCESSAMENTO, 503, 'ArticleReprocessView.post')
+        return JsonResponse({'mensagem': 'Processamento reenviado', 'article': serialize(fetch_article(id))})
 
 
 class ArticleSearchView(View):
@@ -271,7 +292,7 @@ class ArticleDownloadView(View):
 
     def get(self, request, id):
         article = fetch_article(id)
-        if ((article is None) or (not article.s3_key)):
+        if article is None or not article.s3_key:
             return fail("Arquivo inexistente!", 404, 'ArticleDownloadView.get')
 
         try:
@@ -285,4 +306,3 @@ class ArticleDownloadView(View):
         except (ClientError, BotoCoreError):
             logger.exception('Falha ao gerar a URL de download')
             return fail(ERRO_ARMAZENAMENTO, 502, 'ArticleDownloadView.get')
-

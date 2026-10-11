@@ -34,10 +34,10 @@ O `backend/articles/services/aws.py` é a fábrica de clientes. Ele foi revisado
 Pontos para cada serviço quando implementar:
 - **S3:** `upload_fileobj` envia em partes e não carrega o arquivo todo na memória. Capture `botocore.exceptions.ClientError`.
 - **DynamoDB:** use `Decimal`. Capture `ClientError` e registre com `logging`.
-- **SNS:** a publicação pode falhar. Marque o artigo como `ERRO` ou tente de novo.
+- **SNS:** a publicação pode falhar. O artigo fica em `ERRO` e o dono reenvia por `POST /articles/<id>/reprocess/`.
 - **SQS (worker):** use `WaitTimeSeconds=20` e chame `delete_message` só no fim.
-- **Translate:** o limite por chamada é pequeno (cerca de 10 mil bytes). Traduza só o resumo. Se o Learner Lab bloquear o serviço, use uma biblioteca gratuita como alternativa.
-- **Redis:** crie o cliente uma vez, com `socket_connect_timeout` e `socket_timeout`, e capture `redis.exceptions.RedisError`.
+- **Gemini:** a tradução usa a API do Google (`google-genai`), não um serviço da AWS. Precisa de `GEMINI_API_KEY`, `GEMINI_MODEL` e saída para a internet. Traduza só o resumo. Pergunta provável: "Por que não Amazon Translate?" Resposta: o Gemini traduz com melhor qualidade e já estava integrado; o custo é uma chave externa e uma dependência fora da AWS.
+- **Redis:** o cliente é criado uma vez, com `socket_connect_timeout` e `socket_timeout` de 2 s. O código captura qualquer exceção e segue sem cache.
 - **Testes:** os unitários (`tests/unit/`) usam `unittest.mock` e não dependem da rede. Os de integração (`tests/integration/`) usam a AWS real e só rodam com `RUN_AWS_INTEGRATION=1`.
 
 O arquivo `articles/tests/unit/test_aws_clients.py` cobre a fábrica: cache do cliente, região, timeouts, retries e Signature v4.

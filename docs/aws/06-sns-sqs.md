@@ -92,13 +92,22 @@ SQS_QUEUE_URL=<url da fila>
 
 ## Formato da mensagem
 ```
-{"article_id": 1, "s3_key": "artigos/1.pdf", "bucket": "<bucket>"}
+{"article_id": 1, "s3_key": "artigos/1.pdf", "bucket": "<bucket>", "event": "ARTICLE_CREATED"}
 ```
-Feche esse formato com o time antes de implementar a API e o worker.
+É o que a API publica. O worker exige `article_id` (inteiro), `s3_key` e `bucket`. Ele aceita a entrega bruta e o envelope do SNS, então funciona com ou sem "raw message delivery".
 
-## Implementar
-- API (`messaging.py`): `publish_article_created(article_id, s3_key, bucket)` usa `client('sns').publish(TopicArn=..., Message=json.dumps(...))`.
-- Worker (`worker/worker.py`): `receive_message(WaitTimeSeconds=20)`, processa, grava no RDS e só então chama `delete_message`.
+## Como o código usa
+- API (`messaging.py`): `publish_article_created` publica no tópico de `SNS_TOPIC_ARN`. Sem a variável, levanta `RuntimeError`.
+- Se a publicação falhar, o POST devolve **503** com o `article_id`: o artigo já está salvo, com status `ERRO`. O dono reenvia com `POST /articles/<id>/reprocess/`.
+- Worker (`worker/worker.py`): long polling de 20 s, uma mensagem por vez, grava no RDS e só então chama `delete_message`.
+
+### O que pode dar errado
+| Sintoma | Causa provável |
+|---|---|
+| POST devolve 503 e o artigo fica em `ERRO` | `SNS_TOPIC_ARN` vazio ou errado, ou a LabRole sem permissão de publicar. Veja `journalctl -u api` |
+| Publica, mas a fila fica vazia | Falta a assinatura ou a política de acesso da fila (o ARN do tópico na política precisa ser o certo) |
+| Mensagem some e o artigo fica `PENDENTE` | Não há worker rodando, ou ele aponta para outra fila |
+| Mensagem na DLQ | O worker falhou 3 vezes (Gemini sem chave, PDF ilegível, RDS inacessível). Veja o log do worker |
 
 ## Testar no console
 1. SNS > tópico > **Publicar mensagem**. Corpo: o JSON acima. Clique em **Publicar mensagem**.

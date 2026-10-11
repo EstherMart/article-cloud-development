@@ -32,11 +32,16 @@ def get_client():
     global REDIS_CLIENT
     if REDIS_CLIENT is None:
         url = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')
-        REDIS_CLIENT = redis.Redis.from_url(url, decode_responses = True)
+        REDIS_CLIENT = redis.Redis.from_url(
+            url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
     return REDIS_CLIENT
 
 
-def get_or_set(key, loader, ttl = CACHE_TTL):
+def get_or_set(key, loader, ttl=CACHE_TTL):
     client = get_client()
 
     try:
@@ -49,11 +54,12 @@ def get_or_set(key, loader, ttl = CACHE_TTL):
     data = loader()
 
     try:
-        client.set(key, json.dumps(data), ex = ttl)
+        client.set(key, json.dumps(data), ex=ttl)
     except Exception as e:
         logger.error(f"Redis não conseguiu salvar a chave {key}: {e}")
 
     return data
+
 
 def invalidate_article(article_id):
     client = get_client()
@@ -62,7 +68,7 @@ def invalidate_article(article_id):
         keys = [f'artigo:{article_id}', 'artigos:recentes']
         client.delete(*keys)
 
-        for key in client.scan_iter(match = 'busca:*'):
+        for key in client.scan_iter(match='busca:*'):
             client.delete(key)
 
     except Exception as e:
