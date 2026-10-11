@@ -166,6 +166,6 @@ Copie `.env.example` para `.env`. O `.env` não vai para o git.
 | `SNS_TOPIC_ARN` | Tópico SNS para publicar eventos de novos artigos |
 | `SQS_QUEUE_URL` | Fila que o worker consome |
 | `REDIS_URL` | Endpoint Redis usado pelo cache da API |
-| `DYNAMODB_TABLE` | Nome sugerido para a tabela de logs; confira `AWS_DYNAMODB_TABLE_NAME` em `settings.py` |
+| `DYNAMODB_TABLE` | Nome da tabela de logs (padrão `logs_crud`) |
 
 `REDIS_URL` usa o formato `redis://<endpoint-do-elasticache>:6379/0`. Na EC2 use a IAM Role (LabRole) e deixe as chaves AWS fora do `.env`.

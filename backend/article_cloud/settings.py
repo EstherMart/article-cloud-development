@@ -116,15 +116,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Credenciais de acesso AWS
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN', '') 
-
-# Servicos AWS
-AWS_STORAGE_BUCKET_NAME = os.environ.get(
-    'S3_BUCKET',
-    os.environ.get('AWS_STORAGE_BUCKET_NAME', 'article-cloud'),
-)
+# Serviços AWS (na EC2 as credenciais vêm da IAM Role)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
-AWS_DYNAMODB_TABLE_NAME = os.environ.get('AWS_DYNAMODB_TABLE_NAME', 'LogsArtigos')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('S3_BUCKET', 'article-cloud')
+AWS_DYNAMODB_TABLE_NAME = os.environ.get('DYNAMODB_TABLE', 'logs_crud')

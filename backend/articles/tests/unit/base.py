@@ -20,20 +20,24 @@ class ApiTestCase(TestCase):
         cls.user = User.objects.create_user(username=cls.USERNAME, password='senha-forte-123')
 
     def setUp(self):
-        patcher = mock.patch('articles.services.aws.client')
-        self.aws_client_factory = patcher.start()
-        self.addCleanup(patcher.stop)
         self.s3 = mock.Mock()
         self.sns = mock.Mock()
-        self.aws_client_factory.side_effect = lambda service: {
-            's3': self.s3,
-            'sns': self.sns,
-        }[service]
         self.s3.generate_presigned_url.return_value = 'https://s3.exemplo/arquivo.pdf'
+        self.start_patch('articles.services.s3.client', return_value=self.s3)
+        self.start_patch('articles.services.messaging.client', return_value=self.sns)
+        self.start_patch('articles.views.log_action')
+        self.start_patch('articles.views.invalidate_article')
+        self.start_patch('articles.views.get_or_set', side_effect=lambda key, loader, ttl=None: loader())
         env_patcher = mock.patch.dict('os.environ', {'SNS_TOPIC_ARN': 'arn:aws:sns:us-east-1:123456789012:artigos'})
         env_patcher.start()
         self.addCleanup(env_patcher.stop)
         self.login_as(self.user)
+
+    def start_patch(self, target, **kwargs):
+        patcher = mock.patch(target, **kwargs)
+        started = patcher.start()
+        self.addCleanup(patcher.stop)
+        return started
 
     def login_as(self, user):
         self.client.defaults['HTTP_AUTHORIZATION'] = 'Token ' + make_token(user)

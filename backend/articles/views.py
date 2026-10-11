@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 TITULO_DUPLICADO = 'Já existe um artigo com esse título'
 SEM_PERMISSAO = 'Você só pode alterar os seus próprios artigos'
+ERRO_ARMAZENAMENTO = 'Falha ao acessar o armazenamento de arquivos'
+MAX_PDF_BYTES = 10 * 1024 * 1024
 
 
 def articles_queryset():
@@ -47,22 +49,17 @@ def serialize(article):
     }
 
 
-def error(message, status):
-    return JsonResponse({'erro': message}, status=status)
-
 def fail(message, status, local):
     logger.error(f"Erro em {local} (STATUS {status}): {message}")
     return error(message, status)
 
-def read_json(request):
-    """Corpo da requisição como dict. Levanta ValueError se não for um objeto JSON."""
+
+def discard_pdf(s3_key):
+    """Apaga o PDF do S3. Falha só é registrada: o pior caso é um objeto órfão."""
     try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError as exc:
-        raise ValueError('JSON inválido') from exc
-    if not isinstance(body, dict):
-        raise ValueError('JSON inválido')
-    return body
+        delete_pdf(s3_key)
+    except (ClientError, BotoCoreError):
+        logger.exception('Não foi possível apagar %s do S3', s3_key)
 
 
 def clean_names(value):
@@ -93,7 +90,6 @@ class ArticleView(View):
         def db_loader():
             return [serialize(a) for a in articles_queryset()]
         articles = get_or_set('artigos:recentes', db_loader)
-        log_action('READ', 'list', {'count': len(articles)})
         return JsonResponse(articles, safe=False)
 
     @token_required
@@ -119,18 +115,29 @@ class ArticleView(View):
             return fail('tags deve ser uma lista de textos e abstract deve ser texto', 400, 'ArticleView.post')
         if not pdf_file:
             return fail('O envio do PDF é obrigatório!', 400, 'ArticleView.post')
+        if pdf_file.content_type != 'application/pdf':
+            return fail('O arquivo deve ser um PDF', 415, 'ArticleView.post')
+        if pdf_file.size > MAX_PDF_BYTES:
+            return fail('O PDF deve ter no máximo 10 MB', 413, 'ArticleView.post')
 
+        uploaded_key = None
         try:
             with transaction.atomic():
                 article = Article.objects.create(title=title, area=area, user=request.user, abstract=abstract)
                 set_authors(article, authors)
                 set_tags(article, tags)
-                article.s3_key = upload_pdf(article.id, pdf_file)
+                uploaded_key = upload_pdf(article.id, pdf_file)
+                article.s3_key = uploaded_key
                 article.save()
         except IntegrityError:
             return fail(TITULO_DUPLICADO, 409, 'ArticleView.post')
-        except Exception as e:
-            return fail(f"Erro {str(e)} identificado!", 500, 'ArticleView.post')
+        except (ClientError, BotoCoreError):
+            logger.exception('Falha ao enviar o PDF ao S3')
+            return fail(ERRO_ARMAZENAMENTO, 502, 'ArticleView.post')
+        except DatabaseError:
+            if uploaded_key:
+                discard_pdf(uploaded_key)
+            raise
 
         created_article = serialize(fetch_article(article.id))
         invalidate_article(article.id)
@@ -178,7 +185,6 @@ class ArticleDetailsView(View):
         if article_data is None:
             return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.get')
 
-        log_action('READ', str(id), article_data)
         return JsonResponse(article_data)
 
     @token_required
@@ -230,14 +236,12 @@ class ArticleDetailsView(View):
             return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.delete')
         if article.user_id != request.user.id:
             return fail(SEM_PERMISSAO, 403, 'ArticleDetailsView.delete')
-        if (article.s3_key):
-            try:
-                delete_pdf(article.s3_key)
-            except Exception as e:
-                return fail(f"Erro {str(e)} identificado!", 500, 'ArticleDetailsView.delete')
 
         deleted_data = serialize(article)
+        s3_key = article.s3_key
         article.delete()
+        if s3_key:
+            discard_pdf(s3_key)
         invalidate_article(id)
         log_action('DELETE', str(id), deleted_data)
 
@@ -260,7 +264,6 @@ class ArticleSearchView(View):
             return [serialize(a) for a in articles]
 
         search_results = get_or_set(f'busca:{query}', db_loader)
-        log_action('READ', 'Search', {'query': query, 'count': len(search_results)})
         return JsonResponse(search_results, safe=False)
 
 
@@ -274,13 +277,12 @@ class ArticleDownloadView(View):
         try:
             url = presigned_url(article.s3_key)
 
-            log_action('READ', str(id), {'s3_key': article.s3_key})
-
             return JsonResponse({
                 'mensagem': 'Download do artigo já disponível!',
                 'download URL': url
             })
 
-        except Exception as e:
-            return fail(f"Erro {str(e)} identificado!", 500, 'ArticleDownloadView.get')
-        
+        except (ClientError, BotoCoreError):
+            logger.exception('Falha ao gerar a URL de download')
+            return fail(ERRO_ARMAZENAMENTO, 502, 'ArticleDownloadView.get')
+

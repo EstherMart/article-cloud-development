@@ -259,7 +259,7 @@ export CORS_ALLOWED_ORIGINS=http://127.0.0.1:5500,http://localhost:5500   # ante
 
 Use o mesmo endereço no navegador e no CORS (`127.0.0.1` e `localhost` são origens diferentes). Se a API não estiver em `127.0.0.1:8000`, ajuste `API_BASE_URL` em `frontend/js/config.js`.
 
-**Com a AWS.** Criar artigo, baixar o PDF e excluir usam o S3. Para isso, defina no `.env` as credenciais e o bucket (`AWS_STORAGE_BUCKET_NAME`, `AWS_S3_REGION_NAME`). Passo a passo de cada serviço em [docs/aws/](docs/aws/README.md).
+**Com a AWS.** Criar artigo, baixar o PDF e excluir usam o S3. Para isso, defina no `.env` as credenciais e o bucket (`S3_BUCKET`, `AWS_REGION`). Passo a passo de cada serviço em [docs/aws/](docs/aws/README.md).
 
 **Testes**
 

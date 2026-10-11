@@ -1,3 +1,5 @@
+from botocore.exceptions import BotoCoreError
+from django.core.files.uploadedfile import SimpleUploadedFile
 import json
 
 from articles.models import Article, Author, Tag
@@ -103,3 +105,18 @@ class ArticleCreateTests(ApiTestCase):
     def test_guarda_o_resumo_digitado(self):
         article = self.post_article(abstract='Resumo do trabalho').json()['article']
         self.assertEqual(article['abstract'], 'Resumo do trabalho')
+
+    def test_arquivo_que_nao_e_pdf_retorna_415(self):
+        file = SimpleUploadedFile('nota.txt', b'texto', content_type='text/plain')
+        self.assertEqual(self.post_article(file=file).status_code, 415)
+        self.s3.upload_fileobj.assert_not_called()
+
+    def test_pdf_acima_do_limite_retorna_413(self):
+        file = SimpleUploadedFile('grande.pdf', b'0' * (10 * 1024 * 1024 + 1), content_type='application/pdf')
+        self.assertEqual(self.post_article(file=file).status_code, 413)
+
+    def test_falha_do_s3_retorna_502_sem_vazar_detalhe(self):
+        self.s3.upload_fileobj.side_effect = BotoCoreError()
+        response = self.post_article()
+        self.assertEqual(response.status_code, 502)
+        self.assertNotIn('BotoCoreError', response.json()['erro'])

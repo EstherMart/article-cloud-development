@@ -24,8 +24,8 @@ def upload_pdf(article_id, file_obj):
 
 
 def presigned_url(s3_key, expires_in = 300):
-    return client('s3').generate_pressigned_url(
-        'get-object',
+    return client('s3').generate_presigned_url(
+        'get_object',
         Params = {
             'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
             'Key': s3_key
