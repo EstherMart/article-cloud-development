@@ -1,7 +1,4 @@
-"""ElastiCache Redis (requisito 4).
-
-Só roda de uma EC2 na mesma VPC: o Redis não é acessível de fora.
-As chaves de teste usam o prefixo `teste-integracao:` e são apagadas no fim.
+"""ElastiCache Redis (requisito 4). Só roda de uma EC2 na mesma VPC. Chaves de teste: `teste-integracao:*`.
 """
 import os
 import time

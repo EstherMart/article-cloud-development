@@ -1,0 +1,147 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 6 0 R /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 7 0 R /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 8 0 R /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 3508 >>
+stream
+BT /F2 18 Tf 60 790 Td (Acentuação, Símbolos e Termos Técnicos) Tj ET
+BT /F2 13 Tf 60 760 Td (Resumo) Tj ET
+BT /F1 11 Tf 60 730 Td (Este trabalho analisa a distribuição de conteúdo em redes de alta disponibilidade. A) Tj ET
+BT /F1 11 Tf 60 716 Td (coleção tem ação, emissão, inovação, órgão, ônibus, pingüim e coração, para testar) Tj ET
+BT /F1 11 Tf 60 702 Td (acentos e cedilha.) Tj ET
+BT /F1 11 Tf 60 680 Td (Citação: “o desempenho não é um acaso” – afirmam os autores. Valores: R$ 10,00 \(dez) Tj ET
+BT /F1 11 Tf 60 666 Td (reais\), 50% de desconto e 3,14159 como constante. Anotações entre parênteses \(como esta\)) Tj ET
+BT /F1 11 Tf 60 652 Td (e barra \\ também.) Tj ET
+BT /F2 13 Tf 60 630 Td (Termos técnicos que não devem ser traduzidos) Tj ET
+BT /F1 11 Tf 60 600 Td (PostgreSQL, Redis, DynamoDB, Auto Scaling, Application Load Balancer, SQS, SNS, S3, EC2) Tj ET
+BT /F1 11 Tf 60 586 Td (e RDS.) Tj ET
+BT /F1 11 Tf 60 564 Td (Siglas: API REST, CRUD, TTL, DLQ, CPU. Identificadores: artigo_nuvem.pdf,) Tj ET
+BT /F1 11 Tf 60 550 Td (artigos/42.pdf, us-east-1.) Tj ET
+BT /F2 13 Tf 60 528 Td (Conclusão) Tj ET
+BT /F1 11 Tf 60 498 Td (A tradução deve manter os termos acima, os números e a pontuação, e trocar apenas o) Tj ET
+BT /F1 11 Tf 60 484 Td (idioma do texto em volta. Qualquer alteração de “70%” ou de “R$ 10,00” é um erro de) Tj ET
+BT /F1 11 Tf 60 470 Td (tradução.) Tj ET
+BT /F2 13 Tf 60 448 Td (Seção 1) Tj ET
+BT /F1 11 Tf 60 418 Td (O armazenamento de objetos é barato e feito para arquivos. O banco guarda apenas o) Tj ET
+BT /F1 11 Tf 60 404 Td (caminho do arquivo. Quando o usuário pede o download, a aplicação gera um endereço) Tj ET
+BT /F1 11 Tf 60 390 Td (temporário e o navegador baixa o PDF diretamente do armazenamento, sem que o arquivo) Tj ET
+BT /F1 11 Tf 60 376 Td (passe pelo servidor da aplicação.) Tj ET
+BT /F1 11 Tf 60 354 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 340 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 326 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 312 Td (um dado muito antigo.) Tj ET
+BT /F2 13 Tf 60 290 Td (Seção 2) Tj ET
+BT /F1 11 Tf 60 260 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 246 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 232 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 218 Td (um dado muito antigo.) Tj ET
+BT /F1 11 Tf 60 196 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 182 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 11 Tf 60 168 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 11 Tf 60 154 Td (quando termina.) Tj ET
+BT /F2 13 Tf 60 132 Td (Seção 3) Tj ET
+BT /F1 11 Tf 60 102 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 88 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 11 Tf 60 74 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 1 de 3) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Length 3893 >>
+stream
+BT /F1 11 Tf 60 790 Td (quando termina.) Tj ET
+BT /F1 11 Tf 60 768 Td (Se o worker falhar, a mensagem volta para a fila e é tentada de novo. Depois de três) Tj ET
+BT /F1 11 Tf 60 754 Td (tentativas sem sucesso, ela vai para uma fila de descarte, onde pode ser analisada. Como) Tj ET
+BT /F1 11 Tf 60 740 Td (a mesma mensagem pode chegar duas vezes, o processamento precisa produzir o mesmo) Tj ET
+BT /F1 11 Tf 60 726 Td (resultado nas duas.) Tj ET
+BT /F2 13 Tf 60 704 Td (Seção 4) Tj ET
+BT /F1 11 Tf 60 674 Td (Se o worker falhar, a mensagem volta para a fila e é tentada de novo. Depois de três) Tj ET
+BT /F1 11 Tf 60 660 Td (tentativas sem sucesso, ela vai para uma fila de descarte, onde pode ser analisada. Como) Tj ET
+BT /F1 11 Tf 60 646 Td (a mesma mensagem pode chegar duas vezes, o processamento precisa produzir o mesmo) Tj ET
+BT /F1 11 Tf 60 632 Td (resultado nas duas.) Tj ET
+BT /F1 11 Tf 60 610 Td (A tradução do resumo usa um modelo de linguagem. Termos técnicos, nomes de serviços e) Tj ET
+BT /F1 11 Tf 60 596 Td (números devem ser preservados. Quando o autor não digita o resumo, o worker usa o texto) Tj ET
+BT /F1 11 Tf 60 582 Td (extraído do PDF. Se o PDF for uma imagem escaneada, não há texto e o artigo é marcado) Tj ET
+BT /F1 11 Tf 60 568 Td (com erro.) Tj ET
+BT /F2 13 Tf 60 546 Td (Seção 5) Tj ET
+BT /F1 11 Tf 60 516 Td (A tradução do resumo usa um modelo de linguagem. Termos técnicos, nomes de serviços e) Tj ET
+BT /F1 11 Tf 60 502 Td (números devem ser preservados. Quando o autor não digita o resumo, o worker usa o texto) Tj ET
+BT /F1 11 Tf 60 488 Td (extraído do PDF. Se o PDF for uma imagem escaneada, não há texto e o artigo é marcado) Tj ET
+BT /F1 11 Tf 60 474 Td (com erro.) Tj ET
+BT /F1 11 Tf 60 452 Td (Todas as ações de criação, atualização e exclusão são registradas em um banco não) Tj ET
+BT /F1 11 Tf 60 438 Td (relacional, com o tipo da ação, os dados manipulados e a hora. O registro continua) Tj ET
+BT /F1 11 Tf 60 424 Td (existindo depois que o artigo é apagado, o que permite auditar o que aconteceu com cada) Tj ET
+BT /F1 11 Tf 60 410 Td (trabalho.) Tj ET
+BT /F2 13 Tf 60 388 Td (Seção 6) Tj ET
+BT /F1 11 Tf 60 358 Td (Todas as ações de criação, atualização e exclusão são registradas em um banco não) Tj ET
+BT /F1 11 Tf 60 344 Td (relacional, com o tipo da ação, os dados manipulados e a hora. O registro continua) Tj ET
+BT /F1 11 Tf 60 330 Td (existindo depois que o artigo é apagado, o que permite auditar o que aconteceu com cada) Tj ET
+BT /F1 11 Tf 60 316 Td (trabalho.) Tj ET
+BT /F1 11 Tf 60 294 Td (Para tornar a aplicação elástica, um balanceador distribui as requisições entre as) Tj ET
+BT /F1 11 Tf 60 280 Td (instâncias. Quando a média de uso de CPU passa de 70% por mais de um minuto, uma nova) Tj ET
+BT /F1 11 Tf 60 266 Td (instância é criada, até o máximo de três. Abaixo de 25%, uma instância é encerrada.) Tj ET
+BT /F1 11 Tf 60 252 Td (Todas precisam usar a mesma chave de assinatura.) Tj ET
+BT /F2 13 Tf 60 230 Td (Seção 7) Tj ET
+BT /F1 11 Tf 60 200 Td (Para tornar a aplicação elástica, um balanceador distribui as requisições entre as) Tj ET
+BT /F1 11 Tf 60 186 Td (instâncias. Quando a média de uso de CPU passa de 70% por mais de um minuto, uma nova) Tj ET
+BT /F1 11 Tf 60 172 Td (instância é criada, até o máximo de três. Abaixo de 25%, uma instância é encerrada.) Tj ET
+BT /F1 11 Tf 60 158 Td (Todas precisam usar a mesma chave de assinatura.) Tj ET
+BT /F1 11 Tf 60 136 Td (Repositórios de artigos científicos concentram dados de natureza diferente. Os) Tj ET
+BT /F1 11 Tf 60 122 Td (metadados, como título, autores e palavras-chave, são pequenos e relacionais. O arquivo) Tj ET
+BT /F1 11 Tf 60 108 Td (em PDF é grande e binário. Tratar os dois do mesmo jeito torna o banco pesado e caro,) Tj ET
+BT /F1 11 Tf 60 94 Td (por isso cada tipo de dado fica no serviço mais adequado.) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 2 de 3) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Length 925 >>
+stream
+BT /F2 13 Tf 60 790 Td (Seção 8) Tj ET
+BT /F1 11 Tf 60 760 Td (Repositórios de artigos científicos concentram dados de natureza diferente. Os) Tj ET
+BT /F1 11 Tf 60 746 Td (metadados, como título, autores e palavras-chave, são pequenos e relacionais. O arquivo) Tj ET
+BT /F1 11 Tf 60 732 Td (em PDF é grande e binário. Tratar os dois do mesmo jeito torna o banco pesado e caro,) Tj ET
+BT /F1 11 Tf 60 718 Td (por isso cada tipo de dado fica no serviço mais adequado.) Tj ET
+BT /F1 11 Tf 60 696 Td (O armazenamento de objetos é barato e feito para arquivos. O banco guarda apenas o) Tj ET
+BT /F1 11 Tf 60 682 Td (caminho do arquivo. Quando o usuário pede o download, a aplicação gera um endereço) Tj ET
+BT /F1 11 Tf 60 668 Td (temporário e o navegador baixa o PDF diretamente do armazenamento, sem que o arquivo) Tj ET
+BT /F1 11 Tf 60 654 Td (passe pelo servidor da aplicação.) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 3 de 3) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+10 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000264 00000 n 
+0000000401 00000 n 
+0000000538 00000 n 
+0000004098 00000 n 
+0000008043 00000 n 
+0000009019 00000 n 
+0000009116 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+9219
+%%EOF

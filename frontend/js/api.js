@@ -1,8 +1,5 @@
-// Funções de acesso à API. Todas as telas usam estas funções, nenhuma chama fetch direto.
+// Acesso à API: as telas usam estas funções e nenhuma chama fetch direto.
 // Ordem dos scripts: config.js, auth.js, api.js, ui.js, nav.js e o script da tela.
-//
-// Rotas (ver backend/README.md): GET/POST /articles/, GET/PUT/DELETE /articles/<id>/,
-// GET /articles/search/?q=..., GET /articles/<id>/download/, POST /auth/register/ e /auth/login/
 
 async function apiRequest(path, options = {}) {
     const headers = { ...options.headers };

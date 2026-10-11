@@ -1,8 +1,5 @@
-"""DynamoDB (requisito 5). Usa o dynamo_log do projeto contra a tabela real.
-
-A chave da tabela tem de ser a que o código grava: `article_id` String (partição) e `timestamp`
-String (ordenação). Com outro tipo, toda gravação falha e o `log_action` engole o erro, então a
-API continua funcionando sem gravar log nenhum. Estes testes pegam isso. Apagam o que criam.
+"""DynamoDB (requisito 5). A chave da tabela tem de ser `article_id` String + `timestamp` String; com outro
+tipo toda gravação falha e o `log_action` engole o erro. Apaga o que cria.
 """
 import os
 from unittest import mock

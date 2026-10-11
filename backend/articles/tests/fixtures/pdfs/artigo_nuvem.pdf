@@ -3,39 +3,117 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
 endobj
 4 0 obj
-<< /Length 500 >>
-stream
-BT /F2 18 Tf 60 780 Td (Computação em Nuvem para Repositórios Acadêmicos) Tj ET
-BT /F1 12 Tf 60 740 Td (Resumo) Tj ET
-BT /F1 12 Tf 60 720 Td (Este trabalho descreve uma arquitetura em nuvem para armazenar e consultar) Tj ET
-BT /F1 12 Tf 60 700 Td (artigos acadêmicos. Os metadados ficam em banco relacional, o arquivo em) Tj ET
-BT /F1 12 Tf 60 680 Td (armazenamento de objetos e as consultas frequentes em cache.) Tj ET
-BT /F1 12 Tf 60 640 Td (Palavras-chave: nuvem, AWS, armazenamento, cache.) Tj ET
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
 endobj
 5 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+<< /Length 3874 >>
+stream
+BT /F2 18 Tf 60 790 Td (Arquitetura em Nuvem para Repositórios de Artigos Científicos) Tj ET
+BT /F2 13 Tf 60 760 Td (Resumo) Tj ET
+BT /F1 11 Tf 60 730 Td (Este trabalho descreve uma arquitetura em nuvem para armazenar e consultar artigos) Tj ET
+BT /F1 11 Tf 60 716 Td (acadêmicos. Os metadados ficam em banco relacional, os PDFs em armazenamento de objetos) Tj ET
+BT /F1 11 Tf 60 702 Td (e as consultas frequentes em cache. A solução reduz o tempo de resposta das buscas.) Tj ET
+BT /F2 13 Tf 60 680 Td (Palavras-chave) Tj ET
+BT /F1 11 Tf 60 650 Td (nuvem, AWS, armazenamento, cache.) Tj ET
+BT /F2 13 Tf 60 628 Td (Introdução) Tj ET
+BT /F1 11 Tf 60 598 Td (Repositórios de artigos científicos concentram dados de natureza diferente. Os) Tj ET
+BT /F1 11 Tf 60 584 Td (metadados, como título, autores e palavras-chave, são pequenos e relacionais. O arquivo) Tj ET
+BT /F1 11 Tf 60 570 Td (em PDF é grande e binário. Tratar os dois do mesmo jeito torna o banco pesado e caro,) Tj ET
+BT /F1 11 Tf 60 556 Td (por isso cada tipo de dado fica no serviço mais adequado.) Tj ET
+BT /F1 11 Tf 60 534 Td (O armazenamento de objetos é barato e feito para arquivos. O banco guarda apenas o) Tj ET
+BT /F1 11 Tf 60 520 Td (caminho do arquivo. Quando o usuário pede o download, a aplicação gera um endereço) Tj ET
+BT /F1 11 Tf 60 506 Td (temporário e o navegador baixa o PDF diretamente do armazenamento, sem que o arquivo) Tj ET
+BT /F1 11 Tf 60 492 Td (passe pelo servidor da aplicação.) Tj ET
+BT /F1 11 Tf 60 470 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 456 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 442 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 428 Td (um dado muito antigo.) Tj ET
+BT /F2 13 Tf 60 406 Td (Fundamentação) Tj ET
+BT /F1 11 Tf 60 376 Td (O armazenamento de objetos é barato e feito para arquivos. O banco guarda apenas o) Tj ET
+BT /F1 11 Tf 60 362 Td (caminho do arquivo. Quando o usuário pede o download, a aplicação gera um endereço) Tj ET
+BT /F1 11 Tf 60 348 Td (temporário e o navegador baixa o PDF diretamente do armazenamento, sem que o arquivo) Tj ET
+BT /F1 11 Tf 60 334 Td (passe pelo servidor da aplicação.) Tj ET
+BT /F1 11 Tf 60 312 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 298 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 284 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 270 Td (um dado muito antigo.) Tj ET
+BT /F1 11 Tf 60 248 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 234 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 11 Tf 60 220 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 11 Tf 60 206 Td (quando termina.) Tj ET
+BT /F2 13 Tf 60 184 Td (Arquitetura proposta) Tj ET
+BT /F1 11 Tf 60 154 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 140 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 126 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 112 Td (um dado muito antigo.) Tj ET
+BT /F1 11 Tf 60 90 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 76 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 1 de 2) Tj ET
+endstream
 endobj
 6 0 obj
+<< /Length 3053 >>
+stream
+BT /F1 11 Tf 60 790 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 11 Tf 60 776 Td (quando termina.) Tj ET
+BT /F1 11 Tf 60 754 Td (Se o worker falhar, a mensagem volta para a fila e é tentada de novo. Depois de três) Tj ET
+BT /F1 11 Tf 60 740 Td (tentativas sem sucesso, ela vai para uma fila de descarte, onde pode ser analisada. Como) Tj ET
+BT /F1 11 Tf 60 726 Td (a mesma mensagem pode chegar duas vezes, o processamento precisa produzir o mesmo) Tj ET
+BT /F1 11 Tf 60 712 Td (resultado nas duas.) Tj ET
+BT /F2 13 Tf 60 690 Td (Discussão) Tj ET
+BT /F1 11 Tf 60 660 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 646 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 11 Tf 60 632 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 11 Tf 60 618 Td (quando termina.) Tj ET
+BT /F1 11 Tf 60 596 Td (Se o worker falhar, a mensagem volta para a fila e é tentada de novo. Depois de três) Tj ET
+BT /F1 11 Tf 60 582 Td (tentativas sem sucesso, ela vai para uma fila de descarte, onde pode ser analisada. Como) Tj ET
+BT /F1 11 Tf 60 568 Td (a mesma mensagem pode chegar duas vezes, o processamento precisa produzir o mesmo) Tj ET
+BT /F1 11 Tf 60 554 Td (resultado nas duas.) Tj ET
+BT /F1 11 Tf 60 532 Td (A tradução do resumo usa um modelo de linguagem. Termos técnicos, nomes de serviços e) Tj ET
+BT /F1 11 Tf 60 518 Td (números devem ser preservados. Quando o autor não digita o resumo, o worker usa o texto) Tj ET
+BT /F1 11 Tf 60 504 Td (extraído do PDF. Se o PDF for uma imagem escaneada, não há texto e o artigo é marcado) Tj ET
+BT /F1 11 Tf 60 490 Td (com erro.) Tj ET
+BT /F2 13 Tf 60 468 Td (Conclusão) Tj ET
+BT /F1 11 Tf 60 438 Td (Se o worker falhar, a mensagem volta para a fila e é tentada de novo. Depois de três) Tj ET
+BT /F1 11 Tf 60 424 Td (tentativas sem sucesso, ela vai para uma fila de descarte, onde pode ser analisada. Como) Tj ET
+BT /F1 11 Tf 60 410 Td (a mesma mensagem pode chegar duas vezes, o processamento precisa produzir o mesmo) Tj ET
+BT /F1 11 Tf 60 396 Td (resultado nas duas.) Tj ET
+BT /F1 11 Tf 60 374 Td (A tradução do resumo usa um modelo de linguagem. Termos técnicos, nomes de serviços e) Tj ET
+BT /F1 11 Tf 60 360 Td (números devem ser preservados. Quando o autor não digita o resumo, o worker usa o texto) Tj ET
+BT /F1 11 Tf 60 346 Td (extraído do PDF. Se o PDF for uma imagem escaneada, não há texto e o artigo é marcado) Tj ET
+BT /F1 11 Tf 60 332 Td (com erro.) Tj ET
+BT /F1 11 Tf 60 310 Td (Todas as ações de criação, atualização e exclusão são registradas em um banco não) Tj ET
+BT /F1 11 Tf 60 296 Td (relacional, com o tipo da ação, os dados manipulados e a hora. O registro continua) Tj ET
+BT /F1 11 Tf 60 282 Td (existindo depois que o artigo é apagado, o que permite auditar o que aconteceu com cada) Tj ET
+BT /F1 11 Tf 60 268 Td (trabalho.) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 2 de 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
 endobj
 xref
-0 7
+0 9
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
-0000000115 00000 n 
-0000000251 00000 n 
-0000000802 00000 n 
-0000000899 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000393 00000 n 
+0000004319 00000 n 
+0000007424 00000 n 
+0000007521 00000 n 
 trailer
-<< /Size 7 /Root 1 0 R >>
+<< /Size 9 /Root 1 0 R >>
 startxref
-1001
+7623
 %%EOF

@@ -125,7 +125,9 @@ O `DJANGO_ALLOWED_HOSTS` só dá para preencher depois de criar a EC2 ([etapa 2]
 | `DJANGO_SECRET_KEY` diferente entre instâncias | O token de login de uma instância é recusado pela outra (Parte 2) | Use a mesma chave em todas as instâncias da API |
 | Worker sem `GEMINI_API_KEY` e `GEMINI_MODEL` | Todo artigo termina em `ERRO` | Preencha no `.env` do worker (ver [etapa 7](07-ec2-worker.md)) |
 
-Modelo completo de `.env`: `backend/.env.example`.
+Modelo completo de `.env`: `backend/.env.example`. Dois extras do `migrate`: `SEED_DEMO_DATA=1` (padrão) cria 12 artigos de demonstração e `DEMO_USER_PASSWORD` (opcional) deixa entrar como o usuário `demo`.
+
+Para os testes de integração, o `.env` aceita também os nomes dos recursos (`RDS_INSTANCE_ID`, `ELASTICACHE_ID`, `FRONT_URL`, `ASG_NAME`, `ALB_NAME`): ver `backend/articles/tests/integration/README.md`.
 
 ---
 [Índice](README.md) | [1. RDS PostgreSQL →](01-rds.md)

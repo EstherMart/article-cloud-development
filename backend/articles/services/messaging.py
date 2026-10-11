@@ -1,12 +1,6 @@
-"""Publicação de eventos no SNS.
+"""Publicação no SNS (tópico em SNS_TOPIC_ARN) do evento que o worker consome.
 
-A API publica e responde, sem esperar o worker. O SNS entrega na fila SQS
-(assinatura com raw message delivery) e o worker consome.
-
-Formato da mensagem (fechar com o worker, que lê este mesmo formato):
-    {"article_id": 1, "s3_key": "artigos/1.pdf", "bucket": "<S3_BUCKET>", "event": "ARTICLE_CREATED"}
-
-Tópico em SNS_TOPIC_ARN.
+Mensagem: {"article_id": 1, "s3_key": "artigos/1.pdf", "bucket": "<S3_BUCKET>", "event": "ARTICLE_CREATED"}
 """
 import os
 import json

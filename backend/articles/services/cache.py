@@ -1,20 +1,6 @@
-"""Cache Redis (ElastiCache).
+"""Cache Redis, padrão cache-aside: hit devolve o JSON; miss consulta o RDS, grava com TTL e devolve.
 
-Padrão cache-aside:
-    1. procura a chave no Redis;
-    2. hit: devolve; miss: consulta o RDS, grava com TTL e devolve.
-
-Regras:
-- Só metadados, listas e buscas. NUNCA o PDF.
-- TTL de 5 a 10 minutos (CACHE_TTL), como rede de segurança.
-- Todo CREATE, UPDATE e DELETE invalida as chaves afetadas.
-- O worker também invalida artigo:{id} depois de gravar a tradução.
-- Valores guardados como JSON (json.dumps / json.loads).
-
-Chaves:
-    artigo:{id}        detalhe de um artigo
-    artigos:recentes   lista dos mais recentes
-    busca:{termos}     resultado de uma busca (invalidar com o padrão busca:*)
+Chaves: `artigo:{id}`, `artigos:recentes`, `busca:{termos}`. Só metadados, nunca o PDF.
 """
 
 import os

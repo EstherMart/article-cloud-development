@@ -1,8 +1,5 @@
-"""SNS e SQS (requisito 6).
-
-ATENÇÃO: estes testes leem a fila real. Mensagens de outros artigos recebidas por engano
-ficam invisíveis até o visibility timeout acabar. Rode com o worker PARADO, de preferência
-numa fila de teste (aponte SQS_QUEUE_URL para ela).
+"""SNS e SQS (requisito 6). Rode com o worker PARADO, de preferência numa fila de teste: mensagens de
+outros artigos lidas por engano ficam invisíveis até o visibility timeout.
 """
 import json
 import os

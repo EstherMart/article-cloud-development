@@ -1,14 +1,6 @@
-"""Log das ações de CRUD no DynamoDB.
+"""Log das ações de escrita no DynamoDB (tabela em DYNAMODB_TABLE).
 
-A spec exige em toda ação: o tipo da ação, os dados manipulados e a hora.
-Tabela: logs_crud (nome em DYNAMODB_TABLE).
-
-Chave da tabela: partição `article_id` (string) e ordenação `timestamp`
-(ISO 8601). Para o DELETE, o log continua existindo mesmo depois de o artigo
-sumir do RDS.
-
-Atributos: action (CREATE, UPDATE ou DELETE), data (dados do artigo em dict
-simples), timestamp, article_id. Falha de log é registrada e não derruba o CRUD.
+Chave: `article_id` (String) e `timestamp` (String, ISO 8601). Falha de log é registrada e não derruba o CRUD.
 """
 import logging
 from datetime import datetime, timezone

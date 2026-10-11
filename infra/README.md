@@ -1,19 +1,14 @@
-# Infraestrutura (Parte 2)
+# Infraestrutura
 
-ALB e Auto Scaling Group para tornar a API elástica. **A pesquisar na documentação da AWS e preencher aqui.**
+Scripts de apoio. O passo a passo para criar cada serviço na AWS está em [docs/aws](../docs/aws/README.md).
 
-## Regras da spec
+## publicar_front.sh
 
-- Estratégia horizontal. Começa com uma instância (micro ou small).
-- Um balanceador de carga à frente das instâncias.
-- CPU média acima de 70% por mais de 1 minuto: sobe uma instância, até no máximo 3.
-- CPU média do grupo abaixo de 25% por mais de 1 minuto: termina uma instância.
-- O worker fica fora do ASG.
+Publica as telas (`frontend/`) no bucket S3 de site estático, trocando o endereço da API na cópia enviada (o arquivo do repositório não muda).
 
-## Pré-requisito
+```
+infra/publicar_front.sh <bucket-do-site> <url-da-api>
+infra/publicar_front.sh artigos-site-2026 http://meu-alb-123.us-east-1.elb.amazonaws.com
+```
 
-A API precisa ser stateless e subir sozinha numa instância nova (user data ou AMI). Nenhum estado em disco ou memória da EC2.
-
-## A registrar aqui
-
-Launch template, target group e health check, política de scaling, IDs e nomes dos recursos, e o roteiro do vídeo da demonstração.
+Precisa do `aws` configurado. Se o endereço da API mudar (por exemplo, o ALB foi recriado), rode de novo com o endereço novo.

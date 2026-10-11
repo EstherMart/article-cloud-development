@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="650" viewBox="0 0 1100 650"><title>Arquitetura do repositório de artigos</title><defs><marker id="ponta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333333"/></marker></defs><rect width="100%" height="100%" fill="#ffffff"/>
+<text x="550" y="30.3" text-anchor="middle" font-size="18" font-weight="bold" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">Arquitetura</text>
+<rect x="20" y="110" width="140" height="64" rx="8" fill="#e8f1fb" stroke="#2b6cb0" stroke-width="1.8"/>
+<text x="90.0" y="137.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">Usuário</text>
+<text x="90.0" y="155.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">navegador</text>
+<rect x="20" y="250" width="140" height="76" rx="8" fill="#e8f1fb" stroke="#2b6cb0" stroke-width="1.8"/>
+<text x="90.0" y="283.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">Telas estáticas</text>
+<text x="90.0" y="301.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">bucket S3 (site)</text>
+<path d="M 90,174 L 90,250" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<text x="90.0" y="212.2" text-anchor="middle" font-size="12" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">baixa as telas</text>
+<rect x="210" y="110" width="120" height="64" rx="8" fill="#e6f4ea" stroke="#2f855a" stroke-width="1.8"/>
+<text x="270.0" y="137.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">ALB</text>
+<text x="270.0" y="155.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">balanceador</text>
+<path d="M 160,142 L 210,142" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<text x="185" y="129.8" text-anchor="middle" font-size="11" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">HTTP</text>
+<rect x="370" y="70" width="270" height="170" rx="12" fill="none" stroke="#2f855a" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="382" y="90.2" text-anchor="start" font-size="12" font-weight="bold" fill="#2f855a" font-family="DejaVu Sans, Arial, sans-serif">Auto Scaling Group (1 a 3 instâncias)</text>
+<rect x="395" y="105" width="220" height="100" rx="8" fill="#e6f4ea" stroke="#2f855a" stroke-width="1.8"/>
+<text x="505.0" y="141.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">API Django (EC2)</text>
+<text x="505.0" y="159.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">regras, validação,</text>
+<text x="505.0" y="177.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">token e cache</text>
+<path d="M 330,142 L 395,142" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<rect x="760" y="60" width="220" height="64" rx="8" fill="#fff4e0" stroke="#b7791f" stroke-width="1.8"/>
+<text x="870.0" y="87.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">RDS PostgreSQL</text>
+<text x="870.0" y="105.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">metadados dos artigos</text>
+<rect x="760" y="150" width="220" height="64" rx="8" fill="#fff4e0" stroke="#b7791f" stroke-width="1.8"/>
+<text x="870.0" y="177.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">S3 (bucket privado)</text>
+<text x="870.0" y="195.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">PDFs</text>
+<rect x="760" y="240" width="220" height="64" rx="8" fill="#fff4e0" stroke="#b7791f" stroke-width="1.8"/>
+<text x="870.0" y="267.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">ElastiCache Redis</text>
+<text x="870.0" y="285.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">cache de leitura</text>
+<rect x="760" y="330" width="220" height="64" rx="8" fill="#fff4e0" stroke="#b7791f" stroke-width="1.8"/>
+<text x="870.0" y="357.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">DynamoDB</text>
+<text x="870.0" y="375.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">log de CREATE, UPDATE e DELETE</text>
+<path d="M 615,155 L 690,155" fill="none" stroke="#333333" stroke-width="1.8"/>
+<path d="M 690,92 L 690,362" fill="none" stroke="#333333" stroke-width="1.8"/>
+<path d="M 690,92 L 760,92" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<path d="M 690,182 L 760,182" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<path d="M 690,272 L 760,272" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<path d="M 690,362 L 760,362" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<path d="M 505,205 L 505,430" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<text x="443.0" y="321.7" text-anchor="middle" font-size="12" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">publica o evento</text>
+<rect x="430" y="430" width="150" height="64" rx="8" fill="#f3e8fd" stroke="#6b46c1" stroke-width="1.8"/>
+<text x="505.0" y="457.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">SNS</text>
+<text x="505.0" y="475.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">tópico</text>
+<path d="M 580,462 L 660,462" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<rect x="660" y="430" width="150" height="64" rx="8" fill="#f3e8fd" stroke="#6b46c1" stroke-width="1.8"/>
+<text x="735.0" y="457.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">SQS</text>
+<text x="735.0" y="475.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">fila</text>
+<rect x="660" y="560" width="150" height="56" rx="8" fill="#fff0f0" stroke="#c53030" stroke-width="1.8" stroke-dasharray="6 4"/>
+<text x="735.0" y="583.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">DLQ</text>
+<text x="735.0" y="601.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">falhou 3 vezes</text>
+<path d="M 735,494 L 735,560" fill="none" stroke="#333333" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ponta)"/>
+<text x="745" y="530.9" text-anchor="start" font-size="11" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">3 falhas</text>
+<path d="M 810,462 L 880,462" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<rect x="880" y="430" width="190" height="76" rx="8" fill="#fde8e8" stroke="#c53030" stroke-width="1.8"/>
+<text x="975.0" y="454.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">Worker (EC2 própria)</text>
+<text x="975.0" y="472.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">extrai o texto do PDF</text>
+<text x="975.0" y="490.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">e traduz o resumo</text>
+<rect x="880" y="560" width="190" height="56" rx="8" fill="#f1f1f1" stroke="#666666" stroke-width="1.8" stroke-dasharray="6 4"/>
+<text x="975.0" y="583.9" text-anchor="middle" font-size="14" font-weight="normal" fill="#1a1a1a" font-family="DejaVu Sans, Arial, sans-serif">Gemini</text>
+<text x="975.0" y="601.9" text-anchor="middle" font-size="12" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">API externa de tradução</text>
+<path d="M 975,506 L 975,560" fill="none" stroke="#333333" stroke-width="1.8" marker-end="url(#ponta)"/>
+<text x="1001.0" y="537.2" text-anchor="middle" font-size="12" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">traduz</text>
+<path d="M 1070,468 L 1085,468" fill="none" stroke="#333333" stroke-width="1.8"/>
+<path d="M 1085,468 L 1085,92" fill="none" stroke="#333333" stroke-width="1.8"/>
+<text x="975" y="397.9" text-anchor="middle" font-size="11" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">o worker lê o PDF, grava a</text>
+<text x="975" y="413.9" text-anchor="middle" font-size="9" font-weight="normal" fill="#444444" font-family="DejaVu Sans, Arial, sans-serif">tradução e apaga o cache</text>
+<path d="M 1085,92 L 980,92" fill="none" stroke="#333333" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ponta)"/>
+<path d="M 1085,182 L 980,182" fill="none" stroke="#333333" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ponta)"/>
+<path d="M 1085,272 L 980,272" fill="none" stroke="#333333" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ponta)"/>
+<text x="20" y="631.9" text-anchor="start" font-size="11" font-weight="normal" fill="#222222" font-family="DejaVu Sans, Arial, sans-serif">Tracejado = chamadas do worker. O worker não passa pela API e fica fora do Auto Scaling.</text>
+</svg>

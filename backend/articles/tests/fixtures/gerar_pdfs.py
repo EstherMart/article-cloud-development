@@ -1,99 +1,124 @@
-"""Gera os PDFs de exemplo da pasta pdfs/ sem dependências externas.
+"""Gera os PDFs de teste de pdfs/ (todos com mais de uma página, sem dependências externas).
 
-Uso: python gerar_pdfs.py
-
-Os PDFs servem para testar o upload no S3, a extração de texto do worker e as
-validações da API. O texto fica em fonte padrão (Helvetica), então pypdf extrai.
+Uso: python gerar_pdfs.py. A tabela de cenários está em README.md.
 """
+import sys
 from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND))
+
+from articles.demo.artigos import ARTIGOS, PARAGRAFOS, PARAGRAFOS_EN, secoes_demo  # noqa: E402
+from articles.demo.pdf import documento, documento_misto, documento_sem_texto  # noqa: E402
 
 PASTA = Path(__file__).parent / 'pdfs'
 
-ARTIGOS = {
-    'artigo_nuvem.pdf': (
-        'Computação em Nuvem para Repositórios Acadêmicos',
-        [
-            'Resumo',
-            'Este trabalho descreve uma arquitetura em nuvem para armazenar e consultar',
-            'artigos acadêmicos. Os metadados ficam em banco relacional, o arquivo em',
-            'armazenamento de objetos e as consultas frequentes em cache.',
-            '',
-            'Palavras-chave: nuvem, AWS, armazenamento, cache.',
-        ],
-    ),
-    'artigo_mensageria.pdf': (
-        'Processamento Assíncrono com Filas',
-        [
-            'Resumo',
-            'A API publica um evento a cada novo artigo e responde ao usuário sem esperar.',
-            'Um worker consome a fila, extrai o texto do PDF e traduz o resumo.',
-            'Mensagens que falham três vezes seguem para uma fila de descarte.',
-            '',
-            'Palavras-chave: SNS, SQS, worker, idempotência.',
-        ],
-    ),
-    'artigo_banco_de_dados.pdf': (
-        'Modelagem de Dados para Artigos e Autores',
-        [
-            'Resumo',
-            'O modelo relaciona artigos, autores e palavras-chave por tabelas de ligação.',
-            'O título é único para evitar cadastros duplicados do mesmo trabalho.',
-            '',
-            'Palavras-chave: PostgreSQL, modelagem, relação N:N.',
-        ],
-    ),
-}
+
+def demo(indice):
+    artigo = ARTIGOS[indice]
+    return documento(artigo['title'], secoes_demo(artigo))
 
 
-def escapar(texto):
-    return texto.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+def artigo_longo(paginas_alvo, titulo):
+    """Texto corrido em português, repetindo seções numeradas até passar de `paginas_alvo`."""
+    secoes = []
+    for numero in range(1, 200):
+        corpo = [PARAGRAFOS[(numero + i) % len(PARAGRAFOS)] for i in range(3)]
+        secoes.append(('Seção %d' % numero, corpo))
+        pdf = documento(titulo, secoes)
+        if pdf.count(b'/Type /Page ') >= paginas_alvo:
+            return pdf
+    raise RuntimeError('não chegou ao número de páginas pedido')
 
 
-def montar_pdf(conteudo_pagina):
-    """Monta um PDF de uma página. `conteudo_pagina` é o fluxo de operadores da página."""
-    stream = conteudo_pagina.encode('cp1252')
-    objetos = [
-        b'<< /Type /Catalog /Pages 2 0 R >>',
-        b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R '
-        b'/Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>',
-        b'<< /Length %d >>\nstream\n' % len(stream) + stream + b'\nendstream',
-        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
-        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
-    ]
-    saida = bytearray(b'%PDF-1.4\n')
-    offsets = []
-    for numero, corpo in enumerate(objetos, start=1):
-        offsets.append(len(saida))
-        saida += b'%d 0 obj\n' % numero + corpo + b'\nendobj\n'
-    inicio_xref = len(saida)
-    saida += b'xref\n0 %d\n0000000000 65535 f \n' % (len(objetos) + 1)
-    for offset in offsets:
-        saida += b'%010d 00000 n \n' % offset
-    saida += b'trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n' % (len(objetos) + 1, inicio_xref)
-    return bytes(saida)
+def com_paginas(titulo, secoes, pool, minimo):
+    """Acrescenta seções do `pool` até o PDF ter pelo menos `minimo` páginas."""
+    secoes = list(secoes)
+    for numero in range(1, 100):
+        pdf = documento(titulo, secoes)
+        if pdf.count(b'/Type /Page ') >= minimo:
+            return pdf
+        secoes.append(('Seção %d' % numero, [pool[(numero + i) % len(pool)] for i in range(2)]))
+    raise RuntimeError('não chegou ao número de páginas pedido')
 
 
-def pagina_com_texto(titulo, linhas):
-    partes = ['BT /F2 18 Tf 60 780 Td (%s) Tj ET' % escapar(titulo)]
-    y = 740
-    for linha in linhas:
-        if linha:
-            partes.append('BT /F1 12 Tf 60 %d Td (%s) Tj ET' % (y, escapar(linha)))
-        y -= 20
-    return '\n'.join(partes)
+ACENTOS = [
+    ('Resumo', [
+        'Este trabalho analisa a distribuição de conteúdo em redes de alta disponibilidade. A coleção '
+        'tem ação, emissão, inovação, órgão, ônibus, pingüim e coração, para testar acentos e cedilha.',
+        'Citação: “o desempenho não é um acaso” – afirmam os autores. Valores: R$ 10,00 (dez reais), '
+        '50% de desconto e 3,14159 como constante. Anotações entre parênteses (como esta) e barra \\ também.',
+    ]),
+    ('Termos técnicos que não devem ser traduzidos', [
+        'PostgreSQL, Redis, DynamoDB, Auto Scaling, Application Load Balancer, SQS, SNS, S3, EC2 e RDS.',
+        'Siglas: API REST, CRUD, TTL, DLQ, CPU. Identificadores: artigo_nuvem.pdf, artigos/42.pdf, us-east-1.',
+    ]),
+    ('Conclusão', [
+        'A tradução deve manter os termos acima, os números e a pontuação, e trocar apenas o idioma do texto '
+        'em volta. Qualquer alteração de “70%” ou de “R$ 10,00” é um erro de tradução.',
+    ]),
+]
+
+INGLES = [
+    ('Abstract', [
+        'This paper describes a cloud architecture for an academic repository. Metadata is stored in a '
+        'relational database, the files in object storage and frequent queries in an in-memory cache.',
+        'The text of this document is already in English. Translating it to English should not change its '
+        'meaning, and the system must not fail when the source and the target language are the same.',
+    ]),
+    ('Conclusion', [
+        'Asynchronous processing keeps the API fast, because the heavy work happens in a separate worker.',
+    ]),
+]
+
+TECNICO = [
+    ('Resumo', [
+        'Medimos o tempo de resposta de 1.000 requisições com e sem cache. A média caiu de 182 ms para '
+        '37 ms (redução de 79,7%), e o p95 de 410 ms para 88 ms. O banco recebeu 12 consultas em vez de 1.000.',
+    ]),
+    ('Tabela 1 - Resultados', [
+        'Cenário | Média (ms) | p95 (ms) | Consultas ao banco',
+        'Sem cache | 182 | 410 | 1000',
+        'Com cache | 37 | 88 | 12',
+        'Com cache e invalidação | 41 | 95 | 37',
+    ]),
+    ('Configuração', [
+        'CPU alvo: 70% para subir e 25% para descer. Instâncias: mínimo 1, máximo 3. TTL do cache: 300 s. '
+        'Fila: visibilidade 120 s, long polling 20 s, 3 tentativas antes da DLQ.',
+    ]),
+]
 
 
 def main():
     PASTA.mkdir(exist_ok=True)
-    for nome, (titulo, linhas) in ARTIGOS.items():
-        (PASTA / nome).write_bytes(montar_pdf(pagina_com_texto(titulo, linhas)))
+    arquivos = {
+        # Caminho feliz: 2 a 3 páginas, texto em português.
+        'artigo_nuvem.pdf': demo(0),
+        'artigo_mensageria.pdf': demo(2),
+        'artigo_banco_de_dados.pdf': demo(3),
+        # Muitas páginas: o worker junta o texto de todas (quando não há resumo digitado).
+        'artigo_longo_5_paginas.pdf': artigo_longo(5, 'Repositórios de Artigos na Nuvem: Estudo Completo'),
+        'artigo_muito_longo_30_paginas.pdf': artigo_longo(30, 'Anais Completos: Computação em Nuvem'),
+        # Conteúdo que a tradução pode estragar.
+        'artigo_acentos_e_simbolos.pdf': com_paginas('Acentuação, Símbolos e Termos Técnicos', ACENTOS, PARAGRAFOS, 3),
+        'artigo_tecnico_numeros_e_tabela.pdf': com_paginas('Desempenho do Cache em Números', TECNICO, PARAGRAFOS, 2),
+        'artigo_em_ingles.pdf': com_paginas('Cloud Architecture for an Academic Repository', INGLES, PARAGRAFOS_EN, 2),
+        # PDF com texto em algumas páginas e imagem em outra.
+        'artigo_misto_texto_e_imagem.pdf': documento_misto(
+            'Artigo com Página Escaneada',
+            'A primeira página tem texto: este trecho deve aparecer na extração.',
+            'A terceira página também tem texto: este trecho também deve aparecer na extração.',
+        ),
+        # Sem camada de texto: pypdf devolve vazio. Sem resumo digitado, o worker marca ERRO.
+        'escaneado_sem_texto.pdf': documento_sem_texto(3),
+    }
+    for nome, conteudo in arquivos.items():
+        (PASTA / nome).write_bytes(conteudo)
 
-    # Simula PDF escaneado: só desenho, sem texto. O worker deve usar o resumo digitado.
-    (PASTA / 'escaneado_sem_texto.pdf').write_bytes(
-        montar_pdf('0.8 g 60 600 475 150 re f\n0 g 60 600 475 150 re S')
-    )
-    # Arquivo que não é PDF, para testar a validação da API (deve ser recusado).
+    # Cortado no meio: tem cabeçalho de PDF, mas o arquivo está incompleto.
+    inteiro = arquivos['artigo_nuvem.pdf']
+    (PASTA / 'corrompido_truncado.pdf').write_bytes(inteiro[: len(inteiro) // 3])
+    # Extensão .pdf, mas não é PDF: a API recusa (415).
     (PASTA / 'invalido_nao_e_pdf.pdf').write_text('Isto não é um PDF.\n', encoding='utf-8')
 
 

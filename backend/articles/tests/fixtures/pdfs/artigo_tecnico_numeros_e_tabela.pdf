@@ -1,0 +1,87 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+5 0 obj
+<< /Length 3280 >>
+stream
+BT /F2 18 Tf 60 790 Td (Desempenho do Cache em Números) Tj ET
+BT /F2 13 Tf 60 760 Td (Resumo) Tj ET
+BT /F1 11 Tf 60 730 Td (Medimos o tempo de resposta de 1.000 requisições com e sem cache. A média caiu de 182 ms) Tj ET
+BT /F1 11 Tf 60 716 Td (para 37 ms \(redução de 79,7%\), e o p95 de 410 ms para 88 ms. O banco recebeu 12) Tj ET
+BT /F1 11 Tf 60 702 Td (consultas em vez de 1.000.) Tj ET
+BT /F2 13 Tf 60 680 Td (Tabela 1 - Resultados) Tj ET
+BT /F1 11 Tf 60 650 Td (Cenário | Média \(ms\) | p95 \(ms\) | Consultas ao banco) Tj ET
+BT /F1 11 Tf 60 628 Td (Sem cache | 182 | 410 | 1000) Tj ET
+BT /F1 11 Tf 60 606 Td (Com cache | 37 | 88 | 12) Tj ET
+BT /F1 11 Tf 60 584 Td (Com cache e invalidação | 41 | 95 | 37) Tj ET
+BT /F2 13 Tf 60 562 Td (Configuração) Tj ET
+BT /F1 11 Tf 60 532 Td (CPU alvo: 70% para subir e 25% para descer. Instâncias: mínimo 1, máximo 3. TTL do) Tj ET
+BT /F1 11 Tf 60 518 Td (cache: 300 s. Fila: visibilidade 120 s, long polling 20 s, 3 tentativas antes da DLQ.) Tj ET
+BT /F2 13 Tf 60 496 Td (Seção 1) Tj ET
+BT /F1 11 Tf 60 466 Td (O armazenamento de objetos é barato e feito para arquivos. O banco guarda apenas o) Tj ET
+BT /F1 11 Tf 60 452 Td (caminho do arquivo. Quando o usuário pede o download, a aplicação gera um endereço) Tj ET
+BT /F1 11 Tf 60 438 Td (temporário e o navegador baixa o PDF diretamente do armazenamento, sem que o arquivo) Tj ET
+BT /F1 11 Tf 60 424 Td (passe pelo servidor da aplicação.) Tj ET
+BT /F1 11 Tf 60 402 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 388 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 374 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 360 Td (um dado muito antigo.) Tj ET
+BT /F2 13 Tf 60 338 Td (Seção 2) Tj ET
+BT /F1 11 Tf 60 308 Td (Consultas frequentes, como a lista dos artigos mais recentes, repetem o mesmo resultado) Tj ET
+BT /F1 11 Tf 60 294 Td (muitas vezes. Um cache em memória guarda a resposta por alguns minutos. A cada criação,) Tj ET
+BT /F1 11 Tf 60 280 Td (alteração ou exclusão, as chaves afetadas são apagadas, de modo que o usuário nunca vê) Tj ET
+BT /F1 11 Tf 60 266 Td (um dado muito antigo.) Tj ET
+BT /F1 11 Tf 60 244 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 230 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 11 Tf 60 216 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 11 Tf 60 202 Td (quando termina.) Tj ET
+BT /F2 13 Tf 60 180 Td (Seção 3) Tj ET
+BT /F1 11 Tf 60 150 Td (O processamento de cada arquivo recebido pode demorar. Para não deixar o usuário) Tj ET
+BT /F1 11 Tf 60 136 Td (esperando, a aplicação publica um aviso em um tópico e responde na hora. Uma fila recebe) Tj ET
+BT /F1 11 Tf 60 122 Td (o aviso e um serviço separado, o worker, faz o trabalho pesado e grava o resultado) Tj ET
+BT /F1 11 Tf 60 108 Td (quando termina.) Tj ET
+BT /F1 11 Tf 60 86 Td (Se o worker falhar, a mensagem volta para a fila e é tentada de novo. Depois de três) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 1 de 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Length 326 >>
+stream
+BT /F1 11 Tf 60 790 Td (tentativas sem sucesso, ela vai para uma fila de descarte, onde pode ser analisada. Como) Tj ET
+BT /F1 11 Tf 60 776 Td (a mesma mensagem pode chegar duas vezes, o processamento precisa produzir o mesmo) Tj ET
+BT /F1 11 Tf 60 762 Td (resultado nas duas.) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 2 de 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000393 00000 n 
+0000003725 00000 n 
+0000004102 00000 n 
+0000004199 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+4301
+%%EOF

@@ -1,9 +1,4 @@
-"""PDFs no S3.
-
-Regras:
-- Bucket privado (nome em S3_BUCKET). Ninguém acessa o PDF direto.
-- Chave: artigos/{id}.pdf. O id vem do RDS, por isso o registro é gravado antes.
-- Download pelo cliente é por URL pré-assinada, nunca passando pela API nem pelo Redis.
+"""PDFs no S3: bucket privado em S3_BUCKET, chave `artigos/{id}.pdf`, download por URL pré-assinada.
 """
 from django.conf import settings
 

@@ -1,6 +1,6 @@
-# Passo a passo na AWS (Parte 1)
+# Passo a passo na AWS
 
-Roteiro para criar, testar no console e apagar cada serviço da Parte 1. A Parte 2 (ALB e Auto Scaling) fica fora deste roteiro.
+Roteiro para criar, testar no console e apagar cada serviço: os seis da Parte 1 e o ALB com Auto Scaling da Parte 2.
 
 Região: **us-east-1**. Role: **LabRole**. O Learner Lab não permite criar roles IAM.
 
@@ -21,6 +21,7 @@ Cada etapa tem o seu arquivo, com: o que é o serviço, a configuração campo a
 | [07-ec2-worker.md](07-ec2-worker.md) | Servidor do worker |
 | [08-ponta-a-ponta-e-custos.md](08-ponta-a-ponta-e-custos.md) | Teste do fluxo completo e conferência final de custos |
 | [09-estudo-geral.md](09-estudo-geral.md) | Visão geral, boto3 e perguntas para a arguição |
+| [10-alb-auto-scaling.md](10-alb-auto-scaling.md) | Load balancer e Auto Scaling Group (Parte 2) |
 
 ## Ordem de implementação
 
@@ -37,12 +38,14 @@ A ordem abaixo segue o fluxo do cadastro. Cada etapa depende da anterior e termi
 | [5](05-elasticache.md) | Cache | ElastiCache Redis | `REDIS_URL` | Sim | C |
 | [6](06-sns-sqs.md) | Mensageria | SNS e SQS | `SNS_TOPIC_ARN`, `SQS_QUEUE_URL` | Não | D |
 | [7](07-ec2-worker.md) | Processamento | EC2 do worker | (roda o worker) | Sim | D |
+| [10](10-alb-auto-scaling.md) | Elasticidade | ALB e Auto Scaling | (nenhuma) | Sim (ALB e instâncias extras) | E |
 
 O que cada fase entrega:
 - **A (etapas 1 e 2):** CRUD funcionando na nuvem. Requisitos 1 e 2 da spec.
 - **B (etapas 3 e 4):** cadastro com PDF e log. Requisitos 3 e 5.
 - **C (etapa 5):** leituras com cache. Requisito 4.
 - **D (etapas 6 e 7):** processamento assíncrono. Requisito 6.
+- **E (etapa 10):** elasticidade: ALB e Auto Scaling de 1 a 3 instâncias (Parte 2).
 
 Por que essa ordem:
 - O RDS é a base de tudo, porque o id do artigo nasce nele.
@@ -53,7 +56,7 @@ Por que essa ordem:
 
 Custo: RDS, ElastiCache e EC2 cobram por hora. S3, DynamoDB, SNS e SQS não têm custo fixo. Faça uma fase por sessão. Apague RDS, ElastiCache e EC2 ao terminar o dia.
 
-## Plano de custo até a arguição (dia 13)
+## Plano de custo
 
 Regra: o que cobra por hora liga só durante o teste e apaga no mesmo dia. O que custa centavos fica criado.
 
@@ -71,15 +74,7 @@ Valores aproximados, só para dar ordem de grandeza (confira o gasto real no pai
 | EC2 `t3.micro` (cada uma) | ~US$ 0,01 | ~US$ 1 |
 | S3, DynamoDB, SNS, SQS | centavos | quase zero |
 
-Cronograma sugerido:
-
-| Quando | O que fazer |
-|---|---|
-| Sex 09 e sáb 10 | Crie S3, DynamoDB, SNS, SQS e DLQ (etapas 3, 4 e 6). Teste cada um pelo console. Anote nomes e ARNs no `.env` local, fora do git |
-| Dom 11 | Ensaio completo: crie RDS, EC2 e ElastiCache (etapas 1, 2, 5 e 7), rode o teste de ponta a ponta e **apague os três ao terminar** |
-| Seg 12 | Ensaio final, com vídeo ou prints de cada serviço funcionando (plano B). Apague tudo o que cobra por hora |
-| Ter 13 | Manhã: confirme que S3, DynamoDB, SNS e SQS continuam lá. Recrie RDS, EC2 e ElastiCache (RDS leva de 5 a 10 minutos) e suba a API e o worker antes da arguição |
-| Ter 13, depois | Apague tudo (ver "Conferência final de custos") |
+Ordem sugerida: crie primeiro o que custa centavos (S3, DynamoDB, SNS, SQS e DLQ) e teste cada um pelo console. Depois, num dia de ensaio, crie RDS, EC2, ElastiCache e o worker, rode o teste de ponta a ponta e **apague o que cobra por hora ao terminar**. Repita no dia da demonstração, deixando o RDS (5 a 10 minutos para criar) pronto com antecedência.
 
 Cuidados:
 - **RDS parado em vez de apagado:** o Stop do RDS não cobra a instância, só o armazenamento. A AWS religa o RDS sozinha após 7 dias. O ElastiCache não tem Stop: apague.

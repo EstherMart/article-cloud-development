@@ -4,8 +4,9 @@ import json
 from django.http import JsonResponse
 
 
-def error(message, status):
-    return JsonResponse({'erro': message}, status=status)
+def error(message, status, **extra):
+    """Resposta de erro: {'erro': message} mais os campos extras, se houver."""
+    return JsonResponse({'erro': message, **extra}, status=status)
 
 
 def read_json(request):

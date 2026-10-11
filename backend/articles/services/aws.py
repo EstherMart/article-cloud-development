@@ -1,15 +1,5 @@
-"""Fábrica de clientes boto3, usada por todos os módulos desta pasta.
-
-Não há chaves de acesso no código. Na EC2, o boto3 usa a IAM Role (LabRole)
-automaticamente. Localmente, use `aws configure` ou as variáveis
-AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN (Learner Lab).
-
-Boas práticas aplicadas aqui:
-- O cliente é criado uma vez por serviço e região (criar um cliente a cada chamada
-  custa tempo e refaz a busca de credenciais).
-- Clientes boto3 são thread-safe. Resources não são, por isso cada thread tem os seus.
-- Timeouts e retries explícitos: sem eles, um serviço lento trava a requisição da API.
-- S3 assina com Signature v4 (exigida pelas URLs pré-assinadas de buckets privados).
+"""Fábrica de clientes boto3: um por serviço e região, com timeouts e retries. Sem chaves no código:
+na EC2 vale a IAM Role; localmente, `aws configure` ou as variáveis AWS_*.
 """
 import os
 import threading
@@ -24,7 +14,6 @@ def _region():
 
 
 def _config(service_name):
-    # Import dentro da função: o projeto continua importável sem boto3 instalado.
     from botocore.config import Config
 
     options = {

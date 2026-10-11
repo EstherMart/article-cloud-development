@@ -1,10 +1,5 @@
-"""Fluxo completo com todos os serviços. É o último teste: rode depois dos outros passarem.
-
-Requisitos para rodar (de dentro da EC2 da API, porque o Redis só é acessível pela VPC):
-- API no ar em API_BASE_URL (ex.: http://localhost:8000) e worker rodando.
-- Usuário E2E_USERNAME / E2E_PASSWORD. Se não existir, o teste o cria em /auth/register/.
-- .env com S3_BUCKET, DYNAMODB_TABLE e REDIS_URL, iguais aos da API.
-- GEMINI_API_KEY e GEMINI_MODEL no worker: sem eles o artigo termina em ERRO.
+"""Fluxo completo (rode por último), de dentro da EC2 da API: API em API_BASE_URL e worker no ar.
+Cria o usuário E2E_USERNAME/E2E_PASSWORD se não existir. Sem GEMINI_* no worker o artigo termina em ERRO.
 """
 import json
 import os

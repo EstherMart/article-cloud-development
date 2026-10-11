@@ -1,5 +1,4 @@
 // Sessão do usuário no navegador: token e username ficam no localStorage.
-// Endpoints esperados do back: POST /auth/register/ e POST /auth/login/ (ver README.md).
 
 const CHAVE_SESSAO = 'sessao';
 

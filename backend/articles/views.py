@@ -1,5 +1,4 @@
-"""Rotas da API de artigos. As views só orquestram: a lógica de cada serviço AWS
-fica em `services/` (ver services/README.md)."""
+"""Rotas da API de artigos. As views só orquestram: a lógica de cada serviço AWS fica em `services/`."""
 import json
 import logging
 
@@ -23,11 +22,16 @@ from .services.messaging import publish_article_created
 
 logger = logging.getLogger(__name__)
 
+# Mensagens devolvidas ao cliente que aparecem em mais de uma rota.
+ARTIGO_INEXISTENTE = 'Artigo de id inexistente'
+CAMPOS_OBRIGATORIOS = 'title, authors e area são obrigatórios'
 TITULO_DUPLICADO = 'Já existe um artigo com esse título'
 SEM_PERMISSAO = 'Você só pode alterar os seus próprios artigos'
 ERRO_ARMAZENAMENTO = 'Falha ao acessar o armazenamento de arquivos'
 ERRO_PROCESSAMENTO = 'O artigo foi salvo, mas não foi possível iniciar o processamento.'
-MAX_PDF_BYTES = 10 * 1024 * 1024
+
+MAX_PDF_MB = 10
+MAX_PDF_BYTES = MAX_PDF_MB * 1024 * 1024
 
 
 def articles_queryset():
@@ -50,9 +54,10 @@ def serialize(article):
     }
 
 
-def fail(message, status, local):
-    logger.error(f"Erro em {local} (STATUS {status}): {message}")
-    return error(message, status)
+def fail(request, message, status, **extra):
+    """Registra o erro (método, rota e status) e devolve a resposta JSON de erro."""
+    logger.error('%s %s -> %s: %s', request.method, request.path, status, message)
+    return error(message, status, **extra)
 
 
 def discard_pdf(s3_key):
@@ -107,7 +112,6 @@ def fetch_article(article_id):
 class ArticleView(View):
 
     def get(self, request):
-
         def db_loader():
             return [serialize(a) for a in articles_queryset()]
         articles = get_or_set('artigos:recentes', db_loader)
@@ -115,7 +119,6 @@ class ArticleView(View):
 
     @token_required
     def post(self, request):
-
         title = request.POST.get('title')
         area = request.POST.get('area')
         abstract = request.POST.get('abstract', '')
@@ -125,21 +128,21 @@ class ArticleView(View):
             authors = json.loads(request.POST.get('authors', '[]'))
             tags = json.loads(request.POST.get('tags', '[]'))
         except json.JSONDecodeError:
-            return fail('Authors e tags devem estar no formato JSON válido!', 400, 'ArticleView.post')
+            return fail(request, 'Authors e tags devem estar no formato JSON válido!', 400)
 
         authors = clean_names(authors)
         tags = clean_names(tags)
 
         if not title or not area or not authors:
-            return fail('title, authors e area são obrigatórios', 400, 'ArticleView.post')
+            return fail(request, CAMPOS_OBRIGATORIOS, 400)
         if tags is None or not isinstance(abstract, str):
-            return fail('tags deve ser uma lista de textos e abstract deve ser texto', 400, 'ArticleView.post')
+            return fail(request, 'tags deve ser uma lista de textos e abstract deve ser texto', 400)
         if not pdf_file:
-            return fail('O envio do PDF é obrigatório!', 400, 'ArticleView.post')
+            return fail(request, 'O envio do PDF é obrigatório!', 400)
         if pdf_file.content_type != 'application/pdf':
-            return fail('O arquivo deve ser um PDF', 415, 'ArticleView.post')
+            return fail(request, 'O arquivo deve ser um PDF', 415)
         if pdf_file.size > MAX_PDF_BYTES:
-            return fail('O PDF deve ter no máximo 10 MB', 413, 'ArticleView.post')
+            return fail(request, f'O PDF deve ter no máximo {MAX_PDF_MB} MB', 413)
 
         uploaded_key = None
         try:
@@ -151,10 +154,10 @@ class ArticleView(View):
                 article.s3_key = uploaded_key
                 article.save()
         except IntegrityError:
-            return fail(TITULO_DUPLICADO, 409, 'ArticleView.post')
+            return fail(request, TITULO_DUPLICADO, 409)
         except (ClientError, BotoCoreError):
             logger.exception('Falha ao enviar o PDF ao S3')
-            return fail(ERRO_ARMAZENAMENTO, 502, 'ArticleView.post')
+            return fail(request, ERRO_ARMAZENAMENTO, 502)
         except DatabaseError:
             if uploaded_key:
                 discard_pdf(uploaded_key)
@@ -165,9 +168,7 @@ class ArticleView(View):
         log_action('CREATE', str(article.id), created_article)
 
         if not start_processing(article):
-            body = {'erro': ERRO_PROCESSAMENTO, 'article_id': article.id}
-            logger.error('Erro em ArticleView.post (STATUS 503): %s', ERRO_PROCESSAMENTO)
-            return JsonResponse(body, status=503)
+            return fail(request, ERRO_PROCESSAMENTO, 503, article_id=article.id)
 
         return JsonResponse(
             {'mensagem': 'Artigo cadastrado com sucesso', 'article': serialize(fetch_article(article.id))},
@@ -179,14 +180,13 @@ class ArticleView(View):
 class ArticleDetailsView(View):
 
     def get(self, request, id):
-
         def db_loader():
             article = fetch_article(id)
             return serialize(article) if article else None
 
         article_data = get_or_set(f'artigo:{id}', db_loader)
         if article_data is None:
-            return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.get')
+            return fail(request, ARTIGO_INEXISTENTE, 404)
 
         return JsonResponse(article_data)
 
@@ -194,14 +194,14 @@ class ArticleDetailsView(View):
     def put(self, request, id):
         article = fetch_article(id)
         if article is None:
-            return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.put')
+            return fail(request, ARTIGO_INEXISTENTE, 404)
         if article.user_id != request.user.id:
-            return fail(SEM_PERMISSAO, 403, 'ArticleDetailsView.put')
+            return fail(request, SEM_PERMISSAO, 403)
 
         try:
             body = read_json(request)
         except ValueError as e:
-            return fail(str(e), 400, 'ArticleDetailsView.put')
+            return fail(request, str(e), 400)
 
         title = body.get('title')
         area = body.get('area')
@@ -209,9 +209,9 @@ class ArticleDetailsView(View):
         tags = clean_names(body['tags']) if 'tags' in body else None
 
         if not title or not area or not authors:
-            return fail('title, authors e area são obrigatórios', 400, 'ArticleDetailsView.put')
+            return fail(request, CAMPOS_OBRIGATORIOS, 400)
         if 'tags' in body and tags is None:
-            return fail('tags deve ser uma lista de textos', 400, 'ArticleDetailsView.put')
+            return fail(request, 'tags deve ser uma lista de textos', 400)
 
         try:
             with transaction.atomic():
@@ -224,7 +224,7 @@ class ArticleDetailsView(View):
                 if tags is not None:
                     set_tags(article, tags)
         except IntegrityError:
-            return fail(TITULO_DUPLICADO, 409, 'ArticleDetailsView.put')
+            return fail(request, TITULO_DUPLICADO, 409)
 
         updated_article = serialize(fetch_article(id))
         invalidate_article(id)
@@ -236,9 +236,9 @@ class ArticleDetailsView(View):
     def delete(self, request, id):
         article = fetch_article(id)
         if article is None:
-            return fail('Artigo de id inexistente', 404, 'ArticleDetailsView.delete')
+            return fail(request, ARTIGO_INEXISTENTE, 404)
         if article.user_id != request.user.id:
-            return fail(SEM_PERMISSAO, 403, 'ArticleDetailsView.delete')
+            return fail(request, SEM_PERMISSAO, 403)
 
         deleted_data = serialize(article)
         s3_key = article.s3_key
@@ -259,29 +259,28 @@ class ArticleReprocessView(View):
     def post(self, request, id):
         article = fetch_article(id)
         if article is None:
-            return fail('Artigo de id inexistente', 404, 'ArticleReprocessView.post')
+            return fail(request, ARTIGO_INEXISTENTE, 404)
         if article.user_id != request.user.id:
-            return fail(SEM_PERMISSAO, 403, 'ArticleReprocessView.post')
+            return fail(request, SEM_PERMISSAO, 403)
         if article.processing_status != Article.ProcessingStatus.ERRO:
-            return fail('Só é possível reprocessar artigos com status ERRO', 409, 'ArticleReprocessView.post')
+            return fail(request, 'Só é possível reprocessar artigos com status ERRO', 409)
         if not start_processing(article):
-            return fail(ERRO_PROCESSAMENTO, 503, 'ArticleReprocessView.post')
+            return fail(request, ERRO_PROCESSAMENTO, 503)
         return JsonResponse({'mensagem': 'Processamento reenviado', 'article': serialize(fetch_article(id))})
 
 
 class ArticleSearchView(View):
 
     def get(self, request):
-
         query = request.GET.get('q', '')
 
         def db_loader():
             articles = articles_queryset().filter(
-                        Q(title__icontains=query)
-                        | Q(authors__name__icontains=query)
-                        | Q(area__icontains=query)
-                        | Q(tags__name__icontains=query)
-                    ).distinct()
+                Q(title__icontains=query)
+                | Q(authors__name__icontains=query)
+                | Q(area__icontains=query)
+                | Q(tags__name__icontains=query)
+            ).distinct()
             return [serialize(a) for a in articles]
 
         search_results = get_or_set(f'busca:{query}', db_loader)
@@ -293,7 +292,7 @@ class ArticleDownloadView(View):
     def get(self, request, id):
         article = fetch_article(id)
         if article is None or not article.s3_key:
-            return fail("Arquivo inexistente!", 404, 'ArticleDownloadView.get')
+            return fail(request, 'Arquivo inexistente', 404)
 
         try:
             url = presigned_url(article.s3_key)
@@ -305,4 +304,4 @@ class ArticleDownloadView(View):
 
         except (ClientError, BotoCoreError):
             logger.exception('Falha ao gerar a URL de download')
-            return fail(ERRO_ARMAZENAMENTO, 502, 'ArticleDownloadView.get')
+            return fail(request, ERRO_ARMAZENAMENTO, 502)

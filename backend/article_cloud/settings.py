@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -125,3 +126,6 @@ STATIC_URL = 'static/'
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('S3_BUCKET', 'article-cloud')
 AWS_DYNAMODB_TABLE_NAME = os.environ.get('DYNAMODB_TABLE', 'logs_crud')
+
+# Artigos de demonstração (migration 0005). Desligado nos testes e com SEED_DEMO_DATA=0.
+SEED_DEMO_DATA = os.environ.get('SEED_DEMO_DATA', '0' if 'test' in sys.argv else '1') == '1'

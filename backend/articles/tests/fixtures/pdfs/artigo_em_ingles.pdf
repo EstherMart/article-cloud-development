@@ -1,0 +1,94 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+5 0 obj
+<< /Length 3485 >>
+stream
+BT /F2 18 Tf 60 790 Td (Cloud Architecture for an Academic Repository) Tj ET
+BT /F2 13 Tf 60 760 Td (Abstract) Tj ET
+BT /F1 11 Tf 60 730 Td (This paper describes a cloud architecture for an academic repository. Metadata is stored) Tj ET
+BT /F1 11 Tf 60 716 Td (in a relational database, the files in object storage and frequent queries in an in-) Tj ET
+BT /F1 11 Tf 60 702 Td (memory cache.) Tj ET
+BT /F1 11 Tf 60 680 Td (The text of this document is already in English. Translating it to English should not) Tj ET
+BT /F1 11 Tf 60 666 Td (change its meaning, and the system must not fail when the source and the target language) Tj ET
+BT /F1 11 Tf 60 652 Td (are the same.) Tj ET
+BT /F2 13 Tf 60 630 Td (Conclusion) Tj ET
+BT /F1 11 Tf 60 600 Td (Asynchronous processing keeps the API fast, because the heavy work happens in a separate) Tj ET
+BT /F1 11 Tf 60 586 Td (worker.) Tj ET
+BT /F2 13 Tf 60 564 Td (Seção 1) Tj ET
+BT /F1 11 Tf 60 534 Td (Object storage is cheap and built for files. The database keeps only the path of the) Tj ET
+BT /F1 11 Tf 60 520 Td (file. When the user asks for a download, the application generates a temporary address) Tj ET
+BT /F1 11 Tf 60 506 Td (and the browser downloads the PDF directly from storage, without the file passing) Tj ET
+BT /F1 11 Tf 60 492 Td (through the application server.) Tj ET
+BT /F1 11 Tf 60 470 Td (Frequent queries, such as the list of the most recent articles, repeat the same result) Tj ET
+BT /F1 11 Tf 60 456 Td (many times. An in-memory cache keeps the answer for a few minutes. On every creation,) Tj ET
+BT /F1 11 Tf 60 442 Td (change or deletion, the affected keys are erased, so the user never sees data that is) Tj ET
+BT /F1 11 Tf 60 428 Td (too old.) Tj ET
+BT /F2 13 Tf 60 406 Td (Seção 2) Tj ET
+BT /F1 11 Tf 60 376 Td (Frequent queries, such as the list of the most recent articles, repeat the same result) Tj ET
+BT /F1 11 Tf 60 362 Td (many times. An in-memory cache keeps the answer for a few minutes. On every creation,) Tj ET
+BT /F1 11 Tf 60 348 Td (change or deletion, the affected keys are erased, so the user never sees data that is) Tj ET
+BT /F1 11 Tf 60 334 Td (too old.) Tj ET
+BT /F1 11 Tf 60 312 Td (Processing each received file can take a while. To avoid keeping the user waiting, the) Tj ET
+BT /F1 11 Tf 60 298 Td (application publishes a notice to a topic and answers right away. A queue receives the) Tj ET
+BT /F1 11 Tf 60 284 Td (notice and a separate service, the worker, does the heavy work and stores the result) Tj ET
+BT /F1 11 Tf 60 270 Td (when it finishes.) Tj ET
+BT /F2 13 Tf 60 248 Td (Seção 3) Tj ET
+BT /F1 11 Tf 60 218 Td (Processing each received file can take a while. To avoid keeping the user waiting, the) Tj ET
+BT /F1 11 Tf 60 204 Td (application publishes a notice to a topic and answers right away. A queue receives the) Tj ET
+BT /F1 11 Tf 60 190 Td (notice and a separate service, the worker, does the heavy work and stores the result) Tj ET
+BT /F1 11 Tf 60 176 Td (when it finishes.) Tj ET
+BT /F1 11 Tf 60 154 Td (Academic repositories hold data of different natures. Metadata such as title, authors) Tj ET
+BT /F1 11 Tf 60 140 Td (and keywords is small and relational. The PDF file is large and binary. Treating both) Tj ET
+BT /F1 11 Tf 60 126 Td (the same way makes the database heavy and expensive, so each kind of data lives in the) Tj ET
+BT /F1 11 Tf 60 112 Td (service that suits it best.) Tj ET
+BT /F2 13 Tf 60 90 Td (Seção 4) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 1 de 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Length 863 >>
+stream
+BT /F1 11 Tf 60 790 Td (Academic repositories hold data of different natures. Metadata such as title, authors) Tj ET
+BT /F1 11 Tf 60 776 Td (and keywords is small and relational. The PDF file is large and binary. Treating both) Tj ET
+BT /F1 11 Tf 60 762 Td (the same way makes the database heavy and expensive, so each kind of data lives in the) Tj ET
+BT /F1 11 Tf 60 748 Td (service that suits it best.) Tj ET
+BT /F1 11 Tf 60 726 Td (Object storage is cheap and built for files. The database keeps only the path of the) Tj ET
+BT /F1 11 Tf 60 712 Td (file. When the user asks for a download, the application generates a temporary address) Tj ET
+BT /F1 11 Tf 60 698 Td (and the browser downloads the PDF directly from storage, without the file passing) Tj ET
+BT /F1 11 Tf 60 684 Td (through the application server.) Tj ET
+BT /F1 9 Tf 60 30 Td (Página 2 de 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000393 00000 n 
+0000003930 00000 n 
+0000004844 00000 n 
+0000004941 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+5043
+%%EOF

@@ -1,54 +1,46 @@
 # Worker
 
-Processamento assíncrono, fora da API e fora do Auto Scaling Group. Roda em uma EC2 própria.
+Processa os artigos fora da API. Roda numa EC2 própria, fora do Auto Scaling Group, e não importa o Django: tem o próprio `requirements.txt` e atualiza o RDS com SQL direto.
 
 ## O que faz
 
-1. Lê mensagens da fila SQS com long polling (`WaitTimeSeconds=20`).
+1. Lê a fila SQS com long polling (20 s), uma mensagem por vez.
 2. Marca o artigo como `PROCESSANDO`, baixa o PDF do S3 e extrai o texto com `pypdf`.
-3. Traduz com Gemini o resumo digitado no cadastro; se estiver vazio, usa o texto extraído do PDF.
-4. Grava `translated_abstract` no RDS, muda o status para PROCESSADO e invalida `artigo:{id}` no Redis.
+3. Traduz para o inglês com o Gemini o resumo digitado no cadastro. Se o resumo estiver vazio, traduz o texto extraído do PDF. PDF escaneado sem resumo não tem o que traduzir e termina em `ERRO`.
+4. Grava `translated_abstract` no RDS, marca o artigo como `PROCESSADO` e apaga `artigo:{id}` do Redis.
 5. Só então apaga a mensagem da fila.
 
-## Regras de robustez
+Se algo falhar, o artigo vira `ERRO` e a mensagem volta à fila. Depois de 3 tentativas ela vai para a DLQ. A mesma mensagem pode chegar duas vezes, e o resultado é o mesmo. O worker aceita a entrega bruta do SNS ou o envelope do SNS.
 
-- Em caso de falha: marcar o artigo como `ERRO`, registrar a exceção no log e deixar a mensagem voltar à fila.
-- DLQ com 3 tentativas para mensagens que sempre falham.
-- Visibility Timeout maior que o tempo de processar um PDF.
-- O worker aceita entrega bruta do SNS ou o envelope SNS com o corpo no campo `Message`.
-- Formato esperado: `{"article_id": 1, "s3_key": "artigos/1.pdf", "bucket": "nome-do-bucket"}`.
-- A mesma mensagem pode ser entregue novamente. Gravar a tradução e o status é idempotente; a mensagem só é apagada depois do processamento.
+Mensagem esperada: `{"article_id": 1, "s3_key": "artigos/1.pdf", "bucket": "nome-do-bucket"}`.
 
-## Arquivos
+## Variáveis de ambiente
 
-| Arquivo | Conteúdo |
+| Variável | Uso |
 |---|---|
-| `worker.py` | Consumo SQS, extração do PDF, tradução, atualização do RDS e invalidação do Redis |
-| `requirements.txt` | boto3, psycopg2-binary, redis, pypdf e google-genai |
+| `AWS_REGION` | Região (padrão `us-east-1`) |
+| `SQS_QUEUE_URL` | URL da fila principal |
+| `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_SSLMODE` | RDS (`DB_SSLMODE` padrão `require`) |
+| `REDIS_URL` | Cache a invalidar. Se falhar, só registra no log (o cache expira em 5 minutos) |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Tradução. A chave é segredo: fica só no ambiente do worker |
 
-## Decisão: independente do Django
-
-O worker não importa o Django. Ele tem o próprio `requirements.txt` e grava no RDS com um `UPDATE` direto, usando as mesmas variáveis `DB_*` do back. Assim a EC2 do worker não precisa do projeto inteiro, e o serviço fica desacoplado como a spec pede. O custo é que o nome da tabela e das colunas (`articles_article`, `abstract`, `translated_abstract`, `processing_status`) fica duplicado: se o model mudar, atualize as consultas SQL do worker.
-
-## Variáveis necessárias
-
-Configure no ambiente do processo:
-
-- `AWS_REGION`: região AWS, por exemplo `us-east-1`.
-- `SQS_QUEUE_URL`: URL da fila principal.
-- `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` e `DB_PORT`: conexão com o PostgreSQL do RDS. `DB_SSLMODE` é opcional e assume `require`.
-- `REDIS_URL`: endpoint Redis, por exemplo `redis://<endpoint>:6379/0`.
-- `GEMINI_API_KEY` e `GEMINI_MODEL`: credencial e nome do modelo Gemini usados pela função `translate`.
-
-Na EC2, o boto3 usa as credenciais concedidas pelo instance profile/IAM Role para acessar SQS e S3; não coloque chaves AWS no código.
+As credenciais da AWS vêm da IAM Role da instância. O worker precisa de acesso de saída à internet (HTTPS) para falar com o Gemini.
 
 ## Rodar
 
 ```
 cd worker
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# No Linux, carregue as variáveis de ambiente antes de iniciar:
-# Inclua GEMINI_API_KEY e GEMINI_MODEL no ambiente; elas não estão no .env.example do backend.
-set -a; source ../backend/.env; set +a
+set -a; source ../backend/.env; set +a      # mais GEMINI_API_KEY e GEMINI_MODEL
 python worker.py
 ```
+
+## Testes
+
+```
+python -m unittest discover -s tests -v                                          # sem AWS e sem Gemini
+RUN_GEMINI=1 python -m unittest discover -s tests -p 'test_gemini_real.py' -v    # Gemini de verdade
+```
+
+`tests/test_worker.py` cobre a extração (5 e 30 páginas, escaneado, misto, corrompido, acentos) e o resultado do `process()` em cada cenário. `tests/test_gemini_real.py` confere o que a tradução não pode estragar: termos técnicos, números e idioma. Os PDFs vêm de `backend/articles/tests/fixtures/pdfs`.

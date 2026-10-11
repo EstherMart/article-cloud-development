@@ -65,6 +65,20 @@ O `settings.py` já lê essas variáveis. Nenhuma mudança de código é necess�
 5. Faça login em `/auth/login/`, pegue o token e cadastre um artigo com o `curl` do `backend/README.md`.
 6. Pare e suba a API de novo. `GET /articles/` deve devolver o artigo. Isso prova que ele foi para o RDS.
 
+### Artigos de demonstração (migration 0005)
+O `migrate` também cria **12 artigos de demonstração**, dono `demo`, para a busca da arguição (migration `0005_artigos_de_demonstracao`). Eles nascem sem PDF. Para enviar os PDFs ao S3 (de várias páginas), depois do bucket criado:
+
+```
+python manage.py carregar_demo_pdfs
+```
+
+- `SEED_DEMO_DATA=0` no `.env` desliga a criação. Sem a variável, ela fica ligada.
+- `DEMO_USER_PASSWORD` no `.env` (opcional) permite entrar como `demo` para editar, apagar e reprocessar. Sem ela, ninguém entra como `demo`.
+- Todos nascem `PROCESSADO`, com a tradução em inglês pronta: o site já abre com lista, busca e detalhe funcionando. O worker e o reprocessamento se mostram cadastrando um artigo novo pelo front.
+- Os artigos entram direto no banco, sem passar pela API: não geram log no DynamoDB, mensagem no SNS nem chave no Redis. O `carregar_demo_pdfs` também apaga o cache de lista e busca, para o site não mostrar uma lista antiga.
+- Desfazer: `python manage.py migrate articles 0004` apaga só os artigos de demonstração.
+- Antes do `carregar_demo_pdfs`, o download desses artigos devolve 404 (`Arquivo inexistente`). Isso é esperado.
+
 Opcional: conectar com o `psql` para olhar o banco por dentro. O `global-bundle.pem` é o certificado raiz da AWS e não vai para o git (o `.gitignore` já ignora `*.pem`).
 
 ```
