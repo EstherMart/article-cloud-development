@@ -89,3 +89,9 @@ class TokenTests(TestCase):
         token = make_token(user)
         user.delete()
         self.assertIsNone(user_from_request(self.request_with('Token ' + token)))
+
+
+class HealthCheckTests(TestCase):
+    def test_health_responde_200_sem_autenticacao(self):
+        response = self.client.get('/health/')
+        self.assertEqual(response.status_code, 200)

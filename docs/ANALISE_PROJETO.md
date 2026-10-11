@@ -2,14 +2,15 @@
 
 Base: *Especificação do Trabalho Prático 1* (Desenvolvimento de Software para Nuvem), tema "Repositório de artigos científicos". Prazo da spec: 10/10/2026. **O grupo informou que foi adiado para 12/10/2026.** A arguição é na terça, 13/10.
 Escopo: `origin/main` (commit `000391e`) e as branches remotas `origin/backend-AWS` e `origin/funcoes-worker` (seção 1).
-Atualizada em 11/10/2026, depois de mesclar a `funcoes-worker` na `main` local e corrigir os itens 1 a 11 da seção 3.1. Os 74 testes unitários passam (6 de integração pulados). As alterações estão no working tree, sem commit e sem push.
+Atualizada em 11/10/2026, depois de mesclar a `funcoes-worker` na `main` local e corrigir os itens 1 a 11 da seção 3.1. Os 75 testes unitários passam (6 de integração pulados). As alterações estão no working tree, sem commit e sem push.
 
 ## 0. Resumo
 
-- **A `main` local agora carrega e os testes passam** (74 unitários, 6 de integração pulados). O import quebrado veio com o merge da `funcoes-worker`; o `presigned_url` e os testes foram corrigidos à mão.
+- **A `main` local agora carrega e os testes passam** (75 unitários, 6 de integração pulados). O import quebrado veio com o merge da `funcoes-worker`; o `presigned_url` e os testes foram corrigidos à mão.
 - **Implementado, mas nunca rodado na AWS:** S3, Redis, DynamoDB, SNS e worker, front e autenticação.
 - **Corrigidos hoje (3.1 itens 1 a 11):** download do PDF, testes, `error` e `read_json` duplicados, log de READ, variáveis de ambiente, validação do PDF, erros sem vazar exceção, ordem do DELETE e limpeza do upload órfão.
-- **Ainda abertos:** `/health/`, `download_url`, paginação, `ALLOWED_HOSTS`, estilo e a falha do SNS depois de salvar o artigo (3.2 item 2).
+- **Também corrigidos:** `/health/`, `download_url` e `ALLOWED_HOSTS` (itens 12, 13 e 15). A paginação ficou fora (item 14).
+- **Ainda abertos:** estilo (item 16) e a falha do SNS depois de salvar o artigo (3.2 item 2).
 - **Falta a Parte 2 inteira** (ALB, Auto Scaling, vídeo) e criar e validar todos os recursos na AWS.
 - **Git:** a `main` local está 1 commit à frente da `origin/main` (o da `funcoes-worker`), mais as alterações sem commit.
 
@@ -61,16 +62,16 @@ Penalidade de cada serviço ausente: −1,5 ponto. Em código, só **Auto Scalin
 | 6 | Variáveis divergentes | ✅ `S3_BUCKET`, `DYNAMODB_TABLE` (padrão `logs_crud`) e `AWS_REGION`, como no `.env.example` |
 | 7 | PDF sem validação | ✅ 415 se não for `application/pdf`, 413 acima de 10 MB. O `Content-Type` vem do cliente |
 | 8 e 9 | `str(e)` vazado; `except Exception` | ✅ `ClientError` e `BotoCoreError` viram 502 com mensagem fixa e `logger.exception` |
+| 12 | Sem `/health/` | ✅ `GET /health/` responde 200 sem tocar em banco, Redis ou AWS (não detecta RDS fora do ar, de propósito: o ASG não recria instâncias em loop). O health check chega com o IP da instância: ele precisa estar em `DJANGO_ALLOWED_HOSTS` |
+| 13 | `'download URL'` | ✅ `download_url` na API e no front |
+| 15 | `ALLOWED_HOSTS` | ✅ Já lido de `DJANGO_ALLOWED_HOSTS`; `.env.example` documenta o uso na EC2/ALB. `DEBUG=True` por padrão só vale localmente; com `DJANGO_DEBUG=False` a chave secreta é obrigatória |
 | 10 e 11 | DELETE apagava o PDF antes; upload órfão no POST | ✅ DELETE apaga o registro e depois o PDF (falha só loga); POST apaga o PDF se o banco falhar |
 
 **Abertos**
 
 | # | Problema | Local | Correção |
 |---|---|---|---|
-| 12 | **Sem `/health/`** para o health check do ALB | `urls.py` | Rota que responde 200 sem tocar no banco |
-| 13 | Chave `'download URL'` com espaço | `ArticleDownloadView.get` | `download_url` (o front aceita as duas) |
-| 14 | Sem paginação em `GET /articles/`; "Meus artigos" filtra no front. O cache guarda a lista inteira numa chave só | `ArticleView.get` | Paginar e aceitar `?user=` |
-| 15 | `ALLOWED_HOSTS` vazio e `DEBUG=True` por padrão | `settings.py` | Documentar a configuração da EC2 |
+| 14 | **Decidido deixar fora:** sem paginação em `GET /articles/`; "Meus artigos" filtra no front. O cache guarda a lista inteira numa chave só | `ArticleView.get` | Registrar como limitação conhecida |
 | 16 | Estilo: espaços em volta de `=` em argumentos nomeados, parênteses em `if (article.s3_key)`, espaços no fim de linha, arquivos sem newline final, imports não usados (`json` e `settings` em partes) | `views.py`, `cache.py`, `s3.py`, `dynamo_log.py`, `settings.py` | Limpar |
 | 17 | `get_or_set` cacheia `None` (artigo inexistente) como `"null"`: vira cache miss a cada GET de id errado | `cache.py` | Opcional |
 | 18 | `invalidate_article` apaga `busca:*` com `scan_iter`; o custo cresce com o número de buscas | `cache.py` | Anotar para a arguição |
@@ -107,11 +108,11 @@ O worker usa Gemini (`google-genai`): precisa de chave de API externa, de `GEMIN
 
 | Prioridade | Entrega | Arquivo | Estado |
 |---|---|---|---|
-| 1 | `/health/`, `gunicorn`, user data da EC2 | `backend`, `infra/` | não existe |
+| 1 | `gunicorn` no `requirements.txt` e user data da EC2 | `backend`, `infra/` | não existe |
 | 2 | Decidir a falha do SNS (3.2 item 2) | `views.py` | aberto |
 | 3 | Atualizar o `.env.example` com `GEMINI_*` (ou trocar por Amazon Translate) | `.env.example`, `worker/` | aberto |
 | 4 | ALB, Launch Template, ASG, políticas de CPU, vídeo | `infra/` | não existe |
-| 5 | `download_url`, estilo, `ALLOWED_HOSTS` (3.1 itens 13, 15, 16) | `views.py`, `settings.py` | aberto |
+| 5 | Limpeza de estilo (3.1 item 16) | `views.py`, `cache.py` etc. | aberto |
 | 6 | Paginação e filtro `?user=` | `views.py`, `meus_artigos.js` | opcional |
 | ✅ | Front, auth, CORS, Redis, DynamoDB, S3, SNS, worker e os itens 1 a 11 da 3.1 | vários | na `main` local, sem push |
 
@@ -151,8 +152,9 @@ O worker usa Gemini (`google-genai`): precisa de chave de API externa, de `GEMIN
 | DynamoDB (CREATE, UPDATE, DELETE) | 🟡 pronto, sem validação na AWS |
 | Redis | 🟡 pronto, sem validação na AWS |
 | SNS e worker | 🟡 pronto, sem validação na AWS; falha do SNS sem reenvio (3.2 item 2) |
-| Testes unitários | ✅ 74 passam |
-| `/health/`, `gunicorn`, paginação | ❌ |
+| Testes unitários | ✅ 75 passam |
+| `/health/` | ✅ |
+| `gunicorn`, paginação | ❌ |
 
 ### 5.3 Integração e infraestrutura
 
@@ -204,12 +206,12 @@ A documentação em `docs/aws/` cobre o passo a passo de todos os serviços. Ela
 1. **Tradução:** Amazon Translate ou Gemini (3.3). O código atual usa Gemini.
 2. **Falha do SNS depois de salvar o artigo:** reenviar, apagar ou reprocessar (3.2 item 2).
 3. **Onde fica o front na AWS:** S3 estático ou nginx na EC2 da API.
-4. **O que fica fora:** paginação.
+4. **Fora do escopo (decidido):** paginação e filtro `?user=`.
 
 ## 8. Ordem sugerida até o prazo (12/10)
 
 1. Commitar as alterações, fazer push da `main` e apagar as branches `funcoes-worker` e `backend-AWS`.
-2. Fechar os itens abertos pequenos: `/health/`, `download_url`, `ALLOWED_HOSTS`, `gunicorn` no `requirements.txt`, `GEMINI_*` no `.env.example`.
+2. Fechar os itens abertos pequenos: `gunicorn` no `requirements.txt`, `GEMINI_*` no `.env.example`, limpeza de estilo.
 3. Decidir a falha do SNS (3.2 item 2).
 4. Criar RDS, bucket, tabela do DynamoDB e cluster Redis. Subir a API numa EC2. Testar o fluxo no front.
 5. Criar tópico, fila e DLQ. Subir a EC2 do worker. Teste ponta a ponta (`test_pipeline_e2e.py`).

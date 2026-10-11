@@ -70,5 +70,5 @@ function excluirArtigo(id) {
 // Devolve a URL pré-assinada do S3. Abra com window.location = url.
 async function urlDownload(id) {
     const dados = await apiRequest('/articles/' + id + '/download/');
-    return dados.download_url || dados['download URL'];
+    return dados.download_url;
 }

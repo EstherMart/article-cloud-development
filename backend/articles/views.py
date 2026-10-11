@@ -279,7 +279,7 @@ class ArticleDownloadView(View):
 
             return JsonResponse({
                 'mensagem': 'Download do artigo já disponível!',
-                'download URL': url
+                'download_url': url
             })
 
         except (ClientError, BotoCoreError):
