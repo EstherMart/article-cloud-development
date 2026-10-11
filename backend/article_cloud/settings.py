@@ -122,6 +122,9 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_SESSION_TOKEN = os.environ.get('AWS_SESSION_TOKEN', '') 
 
 # Servicos AWS
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'article-cloud')
+AWS_STORAGE_BUCKET_NAME = os.environ.get(
+    'S3_BUCKET',
+    os.environ.get('AWS_STORAGE_BUCKET_NAME', 'article-cloud'),
+)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 AWS_DYNAMODB_TABLE_NAME = os.environ.get('AWS_DYNAMODB_TABLE_NAME', 'LogsArtigos')

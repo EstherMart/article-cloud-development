@@ -11,7 +11,7 @@ PDF_BYTES = b'%PDF-1.4 teste'
 
 
 class ApiTestCase(TestCase):
-    """Base dos testes de API: um usuário autenticado, o S3 simulado e helpers de requisição."""
+    """Base dos testes de API: usuário autenticado, AWS simulada e helpers de requisição."""
 
     USERNAME = 'teste'
 
@@ -20,11 +20,19 @@ class ApiTestCase(TestCase):
         cls.user = User.objects.create_user(username=cls.USERNAME, password='senha-forte-123')
 
     def setUp(self):
-        patcher = mock.patch('articles.views.boto3')
-        self.boto3 = patcher.start()
+        patcher = mock.patch('articles.services.aws.client')
+        self.aws_client_factory = patcher.start()
         self.addCleanup(patcher.stop)
-        self.s3 = self.boto3.client.return_value
+        self.s3 = mock.Mock()
+        self.sns = mock.Mock()
+        self.aws_client_factory.side_effect = lambda service: {
+            's3': self.s3,
+            'sns': self.sns,
+        }[service]
         self.s3.generate_presigned_url.return_value = 'https://s3.exemplo/arquivo.pdf'
+        env_patcher = mock.patch.dict('os.environ', {'SNS_TOPIC_ARN': 'arn:aws:sns:us-east-1:123456789012:artigos'})
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
         self.login_as(self.user)
 
     def login_as(self, user):

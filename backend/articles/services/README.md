@@ -10,9 +10,9 @@ Uma camada fina por serviço AWS. As views só orquestram e chamam estas funçõ
 | `cache.py` | ElastiCache (Redis) | `feat/cache-redis` |
 | `messaging.py` | SNS | `feat/sns-sqs-worker` |
 
-## Estado
+## Uso
 
-Só o esqueleto existe: cada função tem a assinatura, um docstring com as regras e `raise NotImplementedError`. O docstring diz como implementar. Mantenha a assinatura. Se precisar mudar, avise o grupo, porque as views dependem dela.
+As funções de S3, DynamoDB, Redis e SNS são chamadas pelas views. O cadastro publica no SNS depois de salvar os metadados no RDS e enviar o PDF ao S3. A publicação usa `SNS_TOPIC_ARN`; se ela falhar, o artigo fica com status `ERRO` e a API devolve erro em vez de indicar sucesso.
 
 ## Como usar nas views
 
@@ -33,5 +33,5 @@ messaging.publish_article_created(article.id, article.s3_key, bucket) # SNS
 
 - Nenhuma chave de acesso no código. Use a IAM Role (LabRole) e as variáveis do `.env`.
 - Os imports do boto3 e do redis são feitos dentro das funções, para o projeto importar sem eles.
-- Falha no cache nunca derruba a API. Falha no S3 desfaz o cadastro.
-- Quando a tarefa terminar, atualize a tabela de status do README da raiz.
+- Falha no cache não deve derrubar a API. Falha no S3 interrompe o cadastro.
+- A falha ao publicar no SNS é reportada; o artigo já salvo fica marcado como `ERRO`.

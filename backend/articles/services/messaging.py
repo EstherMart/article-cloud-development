@@ -8,16 +8,25 @@ Formato da mensagem (fechar com o worker, que lê este mesmo formato):
 
 Tópico em SNS_TOPIC_ARN.
 """
+import os
 import json
 
 from .aws import client
 
 
 def publish_article_created(article_id, s3_key, bucket):
-    """Publica ARTICLE_CREATED.
+    """Publica no SNS o evento que pede ao worker para processar um artigo."""
+    topic_arn = os.environ.get('SNS_TOPIC_ARN')
+    if not topic_arn:
+        raise RuntimeError('A variável de ambiente SNS_TOPIC_ARN não está configurada.')
 
-    Como fazer: client('sns').publish(TopicArn=..., Message=json.dumps(corpo)).
-    Se a publicação falhar, o artigo fica PENDENTE sem processar: marque ERRO
-    ou decida em grupo se tenta de novo.
-    """
-    raise NotImplementedError
+    message = {
+        'article_id': article_id,
+        's3_key': s3_key,
+        'bucket': bucket,
+        'event': 'ARTICLE_CREATED',
+    }
+    return client('sns').publish(
+        TopicArn=topic_arn,
+        Message=json.dumps(message),
+    )

@@ -6,8 +6,7 @@ senha errada, Security Group fechado, permissão da LabRole, nome de recurso err
 ## Estado
 
 Os testes estão escritos e **desligados**. Eles só rodam com `RUN_AWS_INTEGRATION=1`.
-Os de S3, DynamoDB, SNS/SQS, Redis e do fluxo completo dependem de `articles/services/*` implementado:
-enquanto o serviço lança `NotImplementedError`, o teste correspondente falha (se você ligá-lo).
+Eles acessam recursos AWS reais e precisam das variáveis e permissões descritas abaixo.
 
 ## Como rodar
 
@@ -51,4 +50,4 @@ Com a variável ligada, cada arquivo se pula sozinho se faltar uma variável do 
 3. Nenhuma senha ou chave no código. Tudo vem do `.env`.
 4. RDS, ElastiCache e EC2 cobram por hora. Ligue os testes só quando os recursos existirem e apague os recursos depois.
 5. `test_sns_sqs.py` lê a fila real. Rode com o worker parado, de preferência numa fila só de teste.
-6. `test_pipeline_e2e.py` assume o formato multipart do POST com PDF (`title`, `authors`, `area`, `user`, `abstract`, `file`). Ajuste `_cadastrar` quando o upload for implementado.
+6. `test_pipeline_e2e.py` ainda precisa ser alinhado ao POST autenticado atual: obtenha um token e envie `authors` e `tags` como listas JSON no multipart.

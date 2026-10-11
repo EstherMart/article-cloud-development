@@ -1,4 +1,7 @@
+import json
+
 from articles.models import Article, Author, Tag
+from django.conf import settings
 
 from .base import ApiTestCase
 
@@ -43,7 +46,34 @@ class ArticleCreateTests(ApiTestCase):
     def test_envia_o_pdf_ao_s3(self):
         article = self.post_article().json()['article']
         self.s3.upload_fileobj.assert_called_once()
-        self.assertTrue(Article.objects.get(id=article['id']).s3_key.startswith(f"artigos/{article['id']}-"))
+        self.assertEqual(
+            Article.objects.get(id=article['id']).s3_key,
+            f"artigos/{article['id']}.pdf",
+        )
+
+    def test_publica_evento_sns_depois_de_salvar_artigo_e_pdf(self):
+        response = self.post_article(abstract='Resumo de teste')
+        article = response.json()['article']
+
+        self.assertEqual(response.status_code, 201)
+        self.sns.publish.assert_called_once()
+        kwargs = self.sns.publish.call_args.kwargs
+        self.assertEqual(kwargs['TopicArn'], 'arn:aws:sns:us-east-1:123456789012:artigos')
+        event = json.loads(kwargs['Message'])
+        self.assertEqual(event['article_id'], article['id'])
+        self.assertEqual(event['s3_key'], Article.objects.get(id=article['id']).s3_key)
+        self.assertEqual(event['bucket'], settings.AWS_STORAGE_BUCKET_NAME)
+        self.assertEqual(event['event'], 'ARTICLE_CREATED')
+
+    def test_falha_ao_publicar_marca_artigo_como_erro_e_nao_retorna_sucesso(self):
+        self.sns.publish.side_effect = RuntimeError('SNS indisponível')
+
+        response = self.post_article()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('erro', response.json())
+        article = Article.objects.get()
+        self.assertEqual(article.processing_status, Article.ProcessingStatus.ERRO)
 
     def test_titulo_duplicado_retorna_409(self):
         self.post_article()

@@ -3,7 +3,7 @@ fica em `services/` (ver services/README.md)."""
 import json
 import logging
 
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
@@ -15,9 +15,11 @@ from accounts.tokens import token_required
 from article_cloud.http import error, read_json
 
 from .models import Article, Author, Tag
-from services.dynamo_log import log_action
-from services.s3 import upload_pdf, delete_pdf, presigned_url
-from services.cache import get_or_set, invalidate_article
+from .services.dynamo_log import log_action
+from .services.s3 import upload_pdf, delete_pdf, presigned_url
+from .services.cache import get_or_set, invalidate_article
+from .services.messaging import publish_article_created
+from botocore.exceptions import BotoCoreError, ClientError
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +135,27 @@ class ArticleView(View):
         created_article = serialize(fetch_article(article.id))
         invalidate_article(article.id)
         log_action('CREATE', str(article.id), created_article)
+
+        try:
+            publish_article_created(
+                article.id,
+                article.s3_key,
+                settings.AWS_STORAGE_BUCKET_NAME,
+            )
+        except (BotoCoreError, ClientError, RuntimeError):
+            logger.exception('Não foi possível publicar o artigo %s no SNS.', article.id)
+            try:
+                Article.objects.filter(id=article.id).update(
+                    processing_status=Article.ProcessingStatus.ERRO,
+                )
+            except DatabaseError:
+                logger.exception('Não foi possível marcar o artigo %s como ERRO.', article.id)
+            invalidate_article(article.id)
+            return fail(
+                'O artigo foi salvo, mas não foi possível iniciar o processamento.',
+                503,
+                'ArticleView.post',
+            )
 
         return JsonResponse(
             {'mensagem': 'Artigo cadastrado com sucesso', 'article': serialize(fetch_article(article.id))},

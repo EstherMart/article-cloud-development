@@ -161,6 +161,11 @@ Copie `.env.example` para `.env`. O `.env` não vai para o git.
 |---|---|
 | `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` | Django |
 | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_SSLMODE` | RDS. Sem `DB_HOST`, usa SQLite local |
-| `AWS_REGION`, `S3_BUCKET`, `SNS_TOPIC_ARN`, `SQS_QUEUE_URL`, `DYNAMODB_TABLE`, `REDIS_URL` | AWS (ainda não lidas pelo código; `DB_SSLMODE` já vale) |
+| `AWS_REGION` | Região usada pelos clientes boto3 |
+| `S3_BUCKET` | Bucket S3 usado no upload e no download dos PDFs |
+| `SNS_TOPIC_ARN` | Tópico SNS para publicar eventos de novos artigos |
+| `SQS_QUEUE_URL` | Fila que o worker consome |
+| `REDIS_URL` | Endpoint Redis usado pelo cache da API |
+| `DYNAMODB_TABLE` | Nome sugerido para a tabela de logs; confira `AWS_DYNAMODB_TABLE_NAME` em `settings.py` |
 
 `REDIS_URL` usa o formato `redis://<endpoint-do-elasticache>:6379/0`. Na EC2 use a IAM Role (LabRole) e deixe as chaves AWS fora do `.env`.
