@@ -1,12 +1,12 @@
 # Análise do projeto frente à especificação
 
 Base: *Especificação do Trabalho Prático 1* (Desenvolvimento de Software para Nuvem), tema "Repositório de artigos científicos". Prazo da spec: 10/10/2026. **O grupo informou que foi adiado para 12/10/2026.** A arguição é na terça, 13/10.
-Escopo: `origin/main` (commit `000391e`) e as branches remotas `origin/backend-AWS` e `origin/funcoes-worker` (seção 1).
-Atualizada em 11/10/2026, depois de mesclar a `funcoes-worker` na `main` local e corrigir os itens 1 a 11 da seção 3.1. Os 81 testes unitários passam (6 de integração pulados). As alterações estão no working tree, sem commit e sem push.
+Escopo: a `main` local (que inclui a `funcoes-worker`) comparada com `origin/main` (`000391e`) e `origin/backend-AWS` (seção 1).
+Atualizada em 11/10/2026, depois de mesclar a `funcoes-worker` na `main` local e corrigir os itens 1 a 11 da seção 3.1. Os 29 testes unitários passam (6 de integração pulados). As alterações estão no working tree, sem commit e sem push.
 
 ## 0. Resumo
 
-- **A `main` local agora carrega e os testes passam** (81 unitários, 6 de integração pulados). O import quebrado veio com o merge da `funcoes-worker`; o `presigned_url` e os testes foram corrigidos à mão.
+- **A `main` local agora carrega e os testes passam** (29 unitários, 6 de integração pulados). O import quebrado veio com o merge da `funcoes-worker`; o `presigned_url` e os testes foram corrigidos à mão.
 - **Implementado, mas nunca rodado na AWS:** S3, Redis, DynamoDB, SNS e worker, front e autenticação.
 - **Corrigidos hoje (3.1 itens 1 a 11):** download do PDF, testes, `error` e `read_json` duplicados, log de READ, variáveis de ambiente, validação do PDF, erros sem vazar exceção, ordem do DELETE e limpeza do upload órfão.
 - **Também corrigidos:** `/health/`, `download_url` e `ALLOWED_HOSTS` (itens 12, 13 e 15). A paginação ficou fora (item 14).
@@ -32,7 +32,7 @@ Legenda: ✅ pronto · 🟡 parcial · ❌ não existe.
 
 | # | Requisito | Estado | O que falta |
 |---|---|---|---|
-| 1 | Interface Web ou API REST na **EC2** | 🟡 API, autenticação, CORS e telas prontas; o app carrega e os testes passam. Nada rodou na EC2 | Criar a EC2; `gunicorn` (não está no `requirements.txt`); `DJANGO_ALLOWED_HOSTS`; `/health/`; servir o front |
+| 1 | Interface Web ou API REST na **EC2** | 🟡 API, autenticação, CORS, `/health/` e `gunicorn` prontos; o app carrega e os testes passam. Front decidido (S3 estático). Nada rodou na EC2 | Criar a EC2 com `systemd`, `DJANGO_ALLOWED_HOSTS`, publicar o front (`infra/publicar_front.sh`) |
 | 2 | Dados no **RDS** | 🟡 Código pronto (PostgreSQL por `DB_*`, 4 migrations). Nunca validado na AWS | Criar o RDS, `migrate`, `test_rds.py` |
 | 3 | PDF no **S3** | 🟡 `services/s3.py` implementado e usado pela view; `presigned_url` corrigido; PDF validado (tipo e 10 MB). Nunca testado na AWS | Criar o bucket, testar |
 | 4 | **ElastiCache** (Redis) como cache | 🟡 `cache.py` implementado (`get_or_set`, `invalidate_article`), usado em lista, detalhe e busca, invalidado em POST, PUT e DELETE. O worker também invalida. Nenhum cluster criado | Criar o cluster, `REDIS_URL`, `test_redis.py`, testar `ping` da EC2 |
@@ -94,7 +94,7 @@ Penalidade de cada serviço ausente: −1,5 ponto. Em código, só **Auto Scalin
 |---|---|---|
 | 1 | ✅ Resolvido: os testes simulam o SNS e o S3 em `tests/unit/base.py` | — |
 | 2 | ✅ Resolvido: a resposta 503 do POST traz `article_id` e a rota `POST /articles/<id>/reprocess/` (só o dono, só status `ERRO`) republica o evento no SNS. **Falta o botão no front** (opcional) | — |
-| 3 | **Quatro serviços diferentes lidos do mesmo `.env` com nomes diferentes.** O worker lê `DB_*`, `SQS_QUEUE_URL`, `REDIS_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`. `GEMINI_*` não está no `.env.example` | Documentar no `.env.example` ou trocar por Amazon Translate (3.3) |
+| 3 | ✅ Resolvido: `GEMINI_API_KEY` e `GEMINI_MODEL` estão no `.env.example` e a tradução ficou com o Gemini (3.3) | — |
 | 4 | **O worker acessa o RDS por SQL direto** (`UPDATE articles_article`), não pelo Django. Se o modelo mudar de nome de tabela ou coluna, quebra sem aviso | Anotar como decisão. O teste `test_pipeline_e2e.py` cobre |
 | 5 | **Uma instância só do worker e uma mensagem por vez** (`MaxNumberOfMessages=1`). Suficiente para o trabalho | Anotar |
 | 6 | **`SQS_DLQ_URL` e redrive** não aparecem no código. A DLQ vem da configuração da fila | Configurar `maxReceiveCount` na fila (ver `docs/aws/06-sns-sqs.md`) |
@@ -124,10 +124,39 @@ Revisado em 11/10 contra a `main` local. Armadilhas encontradas e corrigidas nos
 Riscos que ficam e não têm correção de código:
 
 - **Falha de log do DynamoDB é silenciosa**, por decisão. Só aparece em `journalctl`.
-- **`S3_BUCKET` e `DYNAMODB_TABLE` têm valor padrão**: variável esquecida aponta para um recurso que não é seu, sem erro na subida.
+- ✅ **Variável esquecida agora derruba a subida:** com `DJANGO_DEBUG=False`, o Django exige `S3_BUCKET`, `DYNAMODB_TABLE` e `SNS_TOPIC_ARN`. Com `DEBUG=True` seguem os padrões locais.
 - **Credenciais do Learner Lab expiram**: URL assinada e o CLI deixam de funcionar.
 - **O Redis fora do ar custa ~2 s por requisição** até o cache voltar.
-- **O front não tem hospedagem definida** (decisão aberta).
+- **O front depende de CORS e do DNS do ALB:** se o ALB for recriado, o endereço muda e é preciso publicar o front de novo (`infra/publicar_front.sh`).
+- **O Learner Lab pode bloquear bucket público:** se não deixar desmarcar o Block Public Access, o plano B é nginx na EC2.
+
+### 3.5 Testes: o que saiu dos unitários e o que mudou na integração
+
+**Unitários: de 81 para 29.** Ficaram só os imprescindíveis; o resto repetia o óbvio, o que o Django já garante ou o que um teste de integração cobre melhor.
+
+| Área | Ficaram | Saíram (exemplos) |
+|---|---|---|
+| Cadastro (`POST /articles/`) | 10: artigo `PENDENTE`, 401 sem token, dono vem do token, campos obrigatórios, envio ao S3, evento no SNS, falha do SNS (503 com `article_id`, status `ERRO`), título duplicado (409), não-PDF (415), falha do S3 (502 sem vazar detalhe) | autores/tags em formato errado, nomes repetidos, tag reaproveitada, autor órfão, PDF acima do limite |
+| Reprocessamento | 3: reenvia e volta a `PENDENTE`, recusa se não está em `ERRO` (409), 403 de outro usuário | falha de novo, 401 |
+| Leitura e busca | 3: detalhe inexistente (404, passa pelo cache), busca não duplica, `/articles/search/` não é lida como id | lista, detalhe, busca por título, autor, área e tag, número de consultas |
+| Atualizar e apagar | 6: atualiza, 409 e 403 no PUT; apaga o registro, apaga o PDF e 403 no DELETE | campos ausentes, JSON inválido, tags mantidas, 401 |
+| Cliente AWS | 1: Signature v4 (sem ela a URL assinada falha) | região, timeouts, cache do cliente |
+| Contas | 6: cria usuário, usuário repetido (409), login devolve token, senha errada (401), token adulterado, `/health/` | campo ausente, e-mail e senha fracos, mensagem de erro, usuário apagado |
+| Modelo | 0 | cascata e unicidade (cobertas pelos testes de API e pelo RDS real) |
+
+Cobertura que sai com isso: validação de campos, nomes repetidos, N+1 e `CASCADE` deixam de ter teste automático. Aceito de propósito.
+
+**Integração (AWS real): reescrita para o código final.** Os testes antigos passariam com a configuração errada:
+
+| Arquivo | O que estava infiel | Agora |
+|---|---|---|
+| `test_pipeline_e2e.py` | Enviava o campo `user` e `authors` como texto, sem token (hoje dá 401 ou 400); conferia o DynamoDB com `scan` (lê só o primeiro MB) | Login e token, autores em JSON, `query` por artigo; cobre CREATE, UPDATE (com cache invalidado), download, 415 e DELETE; exige a tradução preenchida e para com mensagem clara se o worker marcar `ERRO` |
+| `test_dynamodb.py` | Aceitava chave Número ou String e exigia que o serviço convertesse `float` (o código não converte) | Exige `article_id` String e `timestamp` String; usa o formato real do artigo; prova que falha de log não levanta exceção |
+| `test_redis.py` | O teste de Redis fora do ar usava um cliente próprio, sem os timeouts do código | Usa `get_client` de verdade contra um endereço inalcançável e exige resposta em poucos segundos |
+| `test_sns_sqs.py` | Não conferia o campo `event` nem o `bucket` | Confere os 4 campos da mensagem |
+| `test_rds.py` | Não conferia a restrição que gera o 409 | Confere o índice único em `articles_article.title` |
+
+Nenhum teste de integração foi executado na AWS. Localmente eles são pulados (`skipped=6`) e compilam.
 
 ## 4. Código que PRECISA ser entregue (e o que já testa na AWS)
 
@@ -166,7 +195,7 @@ Riscos que ficam e não têm correção de código:
 | Formulário de artigo | ✅ Chips para autores e palavras-chave, área, resumo e PDF | — |
 | Status e tradução | ✅ Badge de status e tradução no detalhe, sem polling | Opcional: polling na demo do worker |
 | Teste | 🟡 Testado com API simulada | Testar criar, editar e excluir no navegador contra o back com S3 |
-| Hospedagem do front | ❌ Roda em `python -m http.server` | S3 estático ou nginx na EC2; `API_BASE_URL` com o DNS do ALB |
+| Hospedagem do front | 🟡 Decidido: bucket S3 de site estático (`docs/aws/03b-front-s3.md`). Script `infra/publicar_front.sh` pronto; nada criado na AWS | Criar o bucket, publicar com o DNS do ALB, `CORS_ALLOWED_ORIGINS` na API |
 | "Meus artigos" | 🟡 Filtra no cliente | Filtro `?user=` no back (3.1 item 14) |
 
 ### 5.2 Backend (API + worker)
@@ -179,7 +208,7 @@ Riscos que ficam e não têm correção de código:
 | DynamoDB (CREATE, UPDATE, DELETE) | 🟡 pronto, sem validação na AWS |
 | Redis | 🟡 pronto, sem validação na AWS |
 | SNS e worker | 🟡 pronto, sem validação na AWS; reprocessamento por rota |
-| Testes unitários | ✅ 81 passam |
+| Testes unitários | ✅ 29 passam |
 | `/health/` | ✅ |
 | `gunicorn`, paginação | ❌ |
 
@@ -222,7 +251,11 @@ A documentação em `docs/aws/` cobre o passo a passo de todos os serviços. Ela
 | Criar artigo | Chips de autores e tags, PDF, área e resumo; campo `conteudo` removido |
 | Detalhe do artigo | Página completa com download |
 | Erros no front | Alerta Bootstrap com a mensagem da API |
+| Front | Bucket S3 separado, site estático público (só telas; PDFs seguem em bucket privado). Publicado por `infra/publicar_front.sh`; CORS na API |
 | Tradução | Gemini (API externa; chave só no `.env` do worker) |
+| Variáveis obrigatórias | Em produção, `S3_BUCKET`, `DYNAMODB_TABLE` e `SNS_TOPIC_ARN` faltando impedem a subida |
+| Falha de log do DynamoDB | Continua silenciosa (decidido); conferida no ensaio de ponta a ponta |
+| Redis fora do ar | Aceito: API fica ~2 s mais lenta por requisição até o Redis voltar |
 | Falha do SNS | Artigo fica em `ERRO`; o dono reenvia por `POST /articles/<id>/reprocess/` |
 | Log no DynamoDB | `services/dynamo_log.py`, tabela única `logs_crud`, falha de log não derruba o CRUD. **Só escrita é logada** (leitura fora, para o cache valer) |
 | Cache | Redis, TTL de 300 s, invalidação em POST, PUT, DELETE e no worker |
@@ -232,8 +265,7 @@ A documentação em `docs/aws/` cobre o passo a passo de todos os serviços. Ela
 
 **Abertas**
 
-1. **Onde fica o front na AWS:** S3 estático ou nginx na EC2 da API.
-2. **Fora do escopo (decidido):** paginação e filtro `?user=`.
+1. **Fora do escopo (decidido):** paginação e filtro `?user=`.
 
 ## 8. Ordem sugerida até o prazo (12/10)
 

@@ -14,6 +14,7 @@ Cada etapa tem o seu arquivo, com: o que é o serviço, a configuração campo a
 | [01-rds.md](01-rds.md) | Banco PostgreSQL |
 | [02-ec2-api.md](02-ec2-api.md) | Servidor da API |
 | [03-s3.md](03-s3.md) | Armazenamento dos PDFs |
+| [03b-front-s3.md](03b-front-s3.md) | Telas num bucket S3 de site estático |
 | [04-dynamodb.md](04-dynamodb.md) | Log das ações |
 | [05-elasticache.md](05-elasticache.md) | Cache Redis |
 | [06-sns-sqs.md](06-sns-sqs.md) | Mensageria e DLQ |
@@ -31,6 +32,7 @@ A ordem abaixo segue o fluxo do cadastro. Cada etapa depende da anterior e termi
 | [1](01-rds.md) | Banco | RDS PostgreSQL | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT` | Sim | A |
 | [2](02-ec2-api.md) | Servidor da API | EC2 | (roda o código) | Sim | A |
 | [3](03-s3.md) | PDF | S3 | `S3_BUCKET` | Não | B |
+| [3b](03b-front-s3.md) | Telas | S3 (site estático) | (o endereço do site vai em `CORS_ALLOWED_ORIGINS`) | Não | B |
 | [4](04-dynamodb.md) | Log | DynamoDB | `DYNAMODB_TABLE` | Não (on-demand) | B |
 | [5](05-elasticache.md) | Cache | ElastiCache Redis | `REDIS_URL` | Sim | C |
 | [6](06-sns-sqs.md) | Mensageria | SNS e SQS | `SNS_TOPIC_ARN`, `SQS_QUEUE_URL` | Não | D |

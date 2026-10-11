@@ -1,4 +1,4 @@
-"""SNS e SQS (requisito 6). Depende de articles/services/messaging.py implementado.
+"""SNS e SQS (requisito 6).
 
 ATENÇÃO: estes testes leem a fila real. Mensagens de outros artigos recebidas por engano
 ficam invisíveis até o visibility timeout acabar. Rode com o worker PARADO, de preferência
@@ -60,7 +60,8 @@ class SnsSqsTests(AwsIntegrationTestCase):
         self.assertNotIn('TopicArn', corpo)
         self.assertEqual(corpo['article_id'], self.article_id)
         self.assertEqual(corpo['s3_key'], f'artigos/{self.article_id}.pdf')
-        self.assertIn('bucket', corpo)
+        self.assertEqual(corpo['bucket'], os.environ.get('S3_BUCKET', 'bucket-de-teste'))
+        self.assertEqual(corpo['event'], 'ARTICLE_CREATED')
 
     def test_mensagem_nao_apagada_volta_na_fila(self):
         self._publicar()

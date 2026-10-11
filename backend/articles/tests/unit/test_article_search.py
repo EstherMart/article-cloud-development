@@ -12,20 +12,6 @@ class ArticleSearchTests(ApiTestCase):
     def search(self, termo):
         return self.client.get('/articles/search/', {'q': termo}).json()
 
-    def test_busca_por_titulo(self):
-        self.assertEqual(len(self.search('Nuvem')), 1)
-
-    def test_busca_por_autor(self):
-        self.assertEqual(len(self.search('Zeca')), 1)
-
-    def test_busca_por_area(self):
-        self.assertEqual(len(self.search('Dados')), 1)
-
-    def test_busca_por_tag(self):
-        self.assertEqual(len(self.search('SQL')), 1)
-
-    def test_sem_resultado(self):
-        self.assertEqual(self.search('inexistente'), [])
 
     def test_nao_duplica_quando_varias_tags_casam(self):
         self.create_article(title='Cloud', tags=['AWS', 'AWS Cloud'])

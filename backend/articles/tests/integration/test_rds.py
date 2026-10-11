@@ -69,3 +69,11 @@ class RdsConnectionTests(AwsIntegrationTestCase):
             cur.execute("INSERT INTO teste_integracao VALUES ('ok')")
             cur.execute('SELECT valor FROM teste_integracao')
             self.assertEqual(cur.fetchone(), ('ok',))
+
+    def test_titulo_do_artigo_e_unico_no_banco_real(self):
+        # A API devolve 409 por causa desta restrição. Confere que ela existe no RDS.
+        rows = self.query(
+            "SELECT 1 FROM pg_indexes WHERE tablename = 'articles_article' AND indexdef LIKE '%UNIQUE%' "
+            "AND indexdef LIKE '%(title)%'"
+        )
+        self.assertTrue(rows, 'falta o índice único em articles_article.title: rode `migrate`')

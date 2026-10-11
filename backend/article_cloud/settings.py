@@ -14,6 +14,12 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 if not DEBUG and SECRET_KEY == INSECURE_DEV_KEY:
     raise ImproperlyConfigured('Defina DJANGO_SECRET_KEY quando DJANGO_DEBUG for False.')
 
+# Em produção, sem estas variáveis o código usaria recursos padrão que não são do projeto.
+if not DEBUG:
+    missing = [name for name in ('S3_BUCKET', 'DYNAMODB_TABLE', 'SNS_TOPIC_ARN') if not os.environ.get(name)]
+    if missing:
+        raise ImproperlyConfigured('Defina no .env: ' + ', '.join(missing))
+
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if host.strip()]
 
 

@@ -69,7 +69,7 @@ Depois: `sudo systemctl daemon-reload && sudo systemctl enable --now api`. Veja 
 O `EnvironmentFile` não aceita `export` nem aspas com `$`. Se a senha tiver caractere especial, troque a senha.
 
 ### Front
-O front (`frontend/`) não roda na EC2 da API. Para a demonstração, sirva-o na sua máquina (`cd frontend && python3 -m http.server 8080`), troque `API_BASE_URL` em `frontend/js/config.js` pelo `http://<IP público da EC2>:8000` e deixe `CORS_ALLOWED_ORIGINS=http://localhost:8080` no `.env` da API. Sem isso o navegador bloqueia as chamadas (erro de CORS no console). Onde hospedar o front na AWS ainda é uma decisão em aberto.
+O front (`frontend/`) não roda na EC2 da API: ele fica num bucket S3 de site estático ([etapa 3b](03b-front-s3.md)). Para testar antes do bucket, sirva-o na sua máquina (`cd frontend && python3 -m http.server 8080`), troque `API_BASE_URL` em `frontend/js/config.js` pelo `http://<IP público da EC2>:8000` (sem commitar) e deixe `CORS_ALLOWED_ORIGINS=http://localhost:8080` no `.env` da API. Sem isso o navegador bloqueia as chamadas (erro de CORS no console).
 
 ## Testar no navegador e no terminal
 1. Abra `http://<IP público>:8000/health/` (deve responder `{"status": "ok"}`) e depois `/articles/` (deve responder `[]` ou a lista).

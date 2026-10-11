@@ -1,6 +1,6 @@
 # 4. DynamoDB
 
-[← 3. S3](03-s3.md) | [Índice](README.md) | [5. ElastiCache Redis →](05-elasticache.md)
+[← 3b. Front no S3](03b-front-s3.md) | [Índice](README.md) | [5. ElastiCache Redis →](05-elasticache.md)
 
 ## O que é o DynamoDB
 É um banco NoSQL (sem tabelas relacionadas) totalmente gerenciado. Aqui ele guarda o **log de ações** de escrita (criar, atualizar, apagar). Leituras (GET) não são logadas, para o cache valer. Esse log só recebe escritas, e a leitura é por chave.
@@ -55,4 +55,4 @@ Tabela > **Excluir**. Desmarque a criação de backup.
 Pergunta provável: "Por que o log não fica no RDS?" Porque cada leitura e escrita já pesa no RDS. O log cresce sem parar e não precisa de relações. O DynamoDB isola essa carga.
 
 ---
-[← 3. S3](03-s3.md) | [Índice](README.md) | [5. ElastiCache Redis →](05-elasticache.md)
+[← 3b. Front no S3](03b-front-s3.md) | [Índice](README.md) | [5. ElastiCache Redis →](05-elasticache.md)

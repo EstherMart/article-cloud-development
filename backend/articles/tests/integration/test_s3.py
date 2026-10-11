@@ -1,4 +1,4 @@
-"""S3 (requisito 3). Depende de articles/services/s3.py implementado.
+"""S3 (requisito 3).
 
 Usa ids de teste (900000000 em diante) e apaga o objeto no fim.
 """

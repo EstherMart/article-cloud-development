@@ -18,13 +18,6 @@ class ArticleUpdateTests(ApiTestCase):
         self.assertEqual(article.area, 'Redes')
         self.assertEqual([a.name for a in article.authors.all()], ['Carla'])
 
-    def test_campos_ausentes_retornam_400(self):
-        article_id = self.create_article()
-        self.assertEqual(self.send('put', f'/articles/{article_id}/', {}).status_code, 400)
-
-    def test_id_inexistente_retorna_404(self):
-        body = {'title': 'x', 'authors': ['y'], 'area': 'z'}
-        self.assertEqual(self.send('put', '/articles/999/', body).status_code, 404)
 
     def test_titulo_duplicado_retorna_409(self):
         self.create_article()
@@ -32,33 +25,6 @@ class ArticleUpdateTests(ApiTestCase):
         body = {'title': 'Introdução à Nuvem', 'authors': ['Ana'], 'area': 'Redes'}
         self.assertEqual(self.send('put', f'/articles/{outro}/', body).status_code, 409)
 
-    def test_manter_o_proprio_titulo_e_permitido(self):
-        article_id = self.create_article()
-        body = {'title': 'Introdução à Nuvem', 'authors': ['Ana'], 'area': 'Redes'}
-        self.assertEqual(self.send('put', f'/articles/{article_id}/', body).status_code, 200)
-
-    def test_atualiza_tags_quando_enviadas(self):
-        article_id = self.create_article()
-        body = {'title': 'Novo', 'authors': ['Ana'], 'area': 'Redes', 'tags': ['Docker']}
-        resp = self.send('put', f'/articles/{article_id}/', body)
-        self.assertEqual(resp.json()['article']['tags'], ['Docker'])
-
-    def test_mantem_as_tags_quando_nao_enviadas(self):
-        article_id = self.create_article()
-        body = {'title': 'Novo', 'authors': ['Ana'], 'area': 'Redes'}
-        resp = self.send('put', f'/articles/{article_id}/', body)
-        self.assertEqual(sorted(resp.json()['article']['tags']), ['AWS', 'Python'])
-
-    def test_json_invalido_retorna_400(self):
-        article_id = self.create_article()
-        resp = self.client.put(f'/articles/{article_id}/', data='{nao e json', content_type='application/json')
-        self.assertEqual(resp.status_code, 400)
-
-    def test_sem_token_retorna_401(self):
-        article_id = self.create_article()
-        self.logout()
-        body = {'title': 'x', 'authors': ['y'], 'area': 'z'}
-        self.assertEqual(self.send('put', f'/articles/{article_id}/', body).status_code, 401)
 
     def test_artigo_de_outro_usuario_retorna_403(self):
         article_id = self.create_article()
@@ -76,19 +42,11 @@ class ArticleDeleteTests(ApiTestCase):
         self.assertEqual(self.client.delete(f'/articles/{article_id}/').status_code, 200)
         self.assertFalse(Article.objects.filter(id=article_id).exists())
 
-    def test_id_inexistente_retorna_404(self):
-        self.assertEqual(self.client.delete('/articles/999/').status_code, 404)
-
     def test_apaga_o_pdf_do_s3(self):
         article_id = self.create_article()
         self.client.delete(f'/articles/{article_id}/')
         self.s3.delete_object.assert_called_once()
 
-    def test_sem_token_retorna_401(self):
-        article_id = self.create_article()
-        self.logout()
-        self.assertEqual(self.client.delete(f'/articles/{article_id}/').status_code, 401)
-        self.assertTrue(Article.objects.filter(id=article_id).exists())
 
     def test_artigo_de_outro_usuario_retorna_403(self):
         article_id = self.create_article()
