@@ -84,7 +84,6 @@ if os.environ.get('DB_HOST'):
             'PASSWORD': os.environ['DB_PASSWORD'],
             'HOST': os.environ['DB_HOST'],
             'PORT': os.environ.get('DB_PORT', '5432'),
-            'OPTIONS': {'sslmode': os.environ.get('DB_SSLMODE', 'require')},
         }
     }
 else:
