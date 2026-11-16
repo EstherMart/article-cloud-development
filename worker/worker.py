@@ -10,9 +10,20 @@ import psycopg2
 import redis
 from google import genai
 from pypdf import PdfReader
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 
+# minIO client
+def _minio_client():
+    return boto3.client(
+        's3',
+        endpoint_url = _required_env('MINIO_ENDPOINT_URL'),
+        aws_access_key_id = _required_env('MINIO_ROOT_USER'),
+        aws_secret_access_key = _required_env('MINIO_ROOT_PASSWORD'),
+        region_name = os.environ.get('MINIO_REGION', 'us-east-1'),
+        config = Config(signature_version = 's3v4', s3 = {'addressing_style': 'path'})
+    )
 
 def _required_env(name):
     value = os.environ.get(name)
@@ -154,10 +165,7 @@ def process(message):
         _set_status(article_id, 'PROCESSANDO')
         abstract = _get_abstract(article_id)
 
-        s3 = boto3.client(
-            's3',
-            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
-        )
+        s3 = _minio_client()
         response = s3.get_object(Bucket=payload['bucket'], Key=payload['s3_key'])
         pdf_stream = response['Body']
         try:

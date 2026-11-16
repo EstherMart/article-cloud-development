@@ -24,7 +24,7 @@ class Command(BaseCommand):
             saida.mkdir(parents=True, exist_ok=True)
         else:
             from articles.services.cache import invalidate_article
-            from articles.services.s3 import upload_pdf
+            from articles.services.minIO import upload_pdf
 
         enviados = 0
         for dados in ARTIGOS:
