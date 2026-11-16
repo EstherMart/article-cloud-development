@@ -17,7 +17,7 @@ if not DEBUG and SECRET_KEY == INSECURE_DEV_KEY:
 
 # Em produção, sem estas variáveis o código usaria recursos padrão que não são do projeto.
 if not DEBUG:
-    missing = [name for name in ('S3_BUCKET', 'DYNAMODB_TABLE', 'SNS_TOPIC_ARN') if not os.environ.get(name)]
+    missing = [name for name in ('MINIO_ENDPOINT_URL', 'MINIO_ROOT_USER', 'MINIO_ROOT_PASSWORD', 'DYNAMODB_TABLE', 'SNS_TOPIC_ARN') if not os.environ.get(name)]
     if missing:
         raise ImproperlyConfigured('Defina no .env: ' + ', '.join(missing))
 
@@ -123,7 +123,10 @@ STATIC_URL = 'static/'
 
 # Serviços AWS (na EC2 as credenciais vêm da IAM Role)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('S3_BUCKET', 'article-cloud')
+
+# Mudanca do parametro do bucket s3 pelo minIO
+MINIO_BUCKET = os.environ.get('MINIO_BUCKET', 'artigos')
+
 AWS_DYNAMODB_TABLE_NAME = os.environ.get('DYNAMODB_TABLE', 'logs_crud')
 
 # Artigos de demonstração (migration 0005). Desligado nos testes e com SEED_DEMO_DATA=0.

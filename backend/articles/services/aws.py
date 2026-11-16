@@ -47,3 +47,39 @@ def resource(service_name):
     if key not in resources:
         resources[key] = boto3.resource(service_name, region_name=_region(), config=_config(service_name))
     return resources[key]
+
+# Configuracao do minio
+def _minio_config():
+    from botocore.config import Config
+    return Config(
+        signature_version = "s3v4",
+        s3 = {'addressing_style': 'path'},
+        retries = {'max_attempts': 3, 'mode': 'standard'},
+        connect_timeout = 3,
+        read_timeout = 10,
+    )
+
+@lru_cache(maxsize = None)
+def _minio_client(endpoint_url):
+    import boto3
+
+    return boto3.client(
+        's3',
+        endpoint_url = endpoint_url,
+        aws_access_key_id = os.environ['MINIO_ROOT_USER'],
+        aws_secret_access_key = os.environ['MINIO_ROOT_PASSWORD'],
+        region_name = os.environ.get('MINIO_REGION', DEFAULT_REGION),
+        config = _minio_config(),
+    )
+
+def minio_client(public = False):
+
+    internal = os.environ.get('MINIO_ENDPOINT_URL', 'http://localhost:9000')
+
+    if (public == True):
+        endpoint = os.environ.get('MINIO_PUBLIC_ENDPOINT_URL', internal)
+    else:
+        endpoint = internal
+
+    
+    return _minio_client(endpoint)
