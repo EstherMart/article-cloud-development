@@ -16,7 +16,7 @@ from article_cloud.http import error, read_json
 
 from .models import Article, Author, Tag
 from .services.dynamo_log import log_action
-from .services.s3 import upload_pdf, delete_pdf, presigned_url
+from .services.minIO import upload_pdf, delete_pdf, presigned_url
 from .services.cache import get_or_set, invalidate_article
 from .services.messaging import publish_article_created
 
@@ -71,7 +71,7 @@ def discard_pdf(s3_key):
 def start_processing(article):
     """Publica o evento no SNS. Se falhar, marca o artigo como ERRO e devolve False."""
     try:
-        publish_article_created(article.id, article.s3_key, settings.AWS_STORAGE_BUCKET_NAME)
+        publish_article_created(article.id, article.s3_key, settings.MINIO_BUCKET)
     except (BotoCoreError, ClientError, RuntimeError):
         logger.exception('Não foi possível publicar o artigo %s no SNS.', article.id)
         status = Article.ProcessingStatus.ERRO

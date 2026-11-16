@@ -5,17 +5,19 @@ Usa ids de teste (900000000 em diante) e apaga o objeto no fim.
 import time
 import urllib.error
 import urllib.request
-
+from botocore.exceptions import ClientError
+from django.conf import settings
+from articles.services.aws import minio_client
 from .base import PDFS, AwsIntegrationTestCase, novo_article_id
 
 
 class S3Tests(AwsIntegrationTestCase):
-    REQUIRED_ENV = ('S3_BUCKET',)
+    REQUIRED_ENV = ('MINIO_ENDPOINT_URL', 'MINIO_ROOT_USER', 'MINIO_ROOT_PASSWORD', )
 
     def setUp(self):
-        from articles.services import s3
+        from articles.services import minIO
 
-        self.s3 = s3
+        self.s3 = minIO
         self.article_id = novo_article_id()
         self.pdf = (PDFS / 'artigo_nuvem.pdf').read_bytes()
         self.key = f'artigos/{self.article_id}.pdf'
@@ -46,16 +48,19 @@ class S3Tests(AwsIntegrationTestCase):
         import os
 
         from articles.services.aws import client
+        from django.conf import settings
+        from articles.services.aws import minio_client
 
         self._upload()
-        head = client('s3').head_object(Bucket=os.environ['S3_BUCKET'], Key=self.key)
+        head = minio_client().head_object(Bucket = settings.MINIO_BUCKET, Key = self.key)
         self.assertEqual(head['ContentType'], 'application/pdf')
 
     def test_bucket_e_privado(self):
         import os
 
         self._upload()
-        url_sem_assinatura = f"https://{os.environ['S3_BUCKET']}.s3.amazonaws.com/{self.key}"
+        base = minio_client(public=True).meta.endpoint_url
+        url_sem_assinatura = f'{base}/{settings.MINIO_BUCKET}/{self.key}'
         with self.assertRaises(urllib.error.HTTPError) as erro:
             self._baixar(url_sem_assinatura)
         self.assertEqual(erro.exception.code, 403)
@@ -75,8 +80,11 @@ class S3Tests(AwsIntegrationTestCase):
 
         from articles.services.aws import client
 
+        from django.conf import settings
+        from articles.services.aws import minio_client
+
         self._upload()
         self.s3.delete_pdf(self.key)
         with self.assertRaises(ClientError) as erro:
-            client('s3').head_object(Bucket=os.environ['S3_BUCKET'], Key=self.key)
+            minio_client().head_object(Bucket = settings.MINIO_BUCKET, Key = self.key)
         self.assertEqual(erro.exception.response['Error']['Code'], '404')
