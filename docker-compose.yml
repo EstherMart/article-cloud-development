@@ -90,6 +90,14 @@ services:
     networks:
       - artigos-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: artigos-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - artigos-network
+
 volumes:
   postgres_data:
   minio_data:
