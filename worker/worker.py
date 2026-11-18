@@ -1,4 +1,9 @@
-"""Worker que consome eventos da SQS, processa artigos e grava o resultado no RDS."""
+"""Worker que consome eventos do RabbitMQ, processa artigos e grava o resultado no Postgres.
+
+A fila e a DLQ são declaradas aqui e no backend (`backend/articles/services/messaging.py`) com argumentos
+IDÊNTICOS: se um lado mudar sem o outro, o RabbitMQ recusa a segunda declaração (PRECONDITION_FAILED).
+Detalhes e motivos em docs/docker/rabbitmq.md.
+"""
 import json
 import logging
 import os
@@ -6,13 +11,19 @@ import time
 from io import BytesIO
 
 import boto3
+import pika
 import psycopg2
 import redis
 from google import genai
 from pypdf import PdfReader
 from botocore.config import Config
+from pika.exceptions import AMQPError
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_QUEUE = 'artigos.criados'
+MAX_DELIVERIES = 3  # reentregas permitidas; depois da 3ª reentrega (4ª entrega) falhar, vai para a DLQ
+RECONNECT_DELAY = 5
 
 # minIO client
 def _minio_client():
@@ -44,10 +55,8 @@ def _database_connection():
 
 
 def _decode_body(body):
-    """Decodifica uma mensagem JSON direta ou o envelope SNS."""
+    """Decodifica o corpo (JSON) da mensagem e valida os campos obrigatórios."""
     payload = json.loads(body)
-    if isinstance(payload, dict) and isinstance(payload.get('Message'), str):
-        payload = json.loads(payload['Message'])
     if not isinstance(payload, dict):
         raise ValueError('A mensagem da fila deve conter um objeto JSON.')
 
@@ -60,15 +69,46 @@ def _decode_body(body):
     return payload
 
 
-def receive_messages(sqs, queue_url):
-    """Faz long polling na SQS e devolve as mensagens recebidas."""
-    response = sqs.receive_message(
-        QueueUrl=queue_url,
-        WaitTimeSeconds=20,
-        MaxNumberOfMessages=1,
-        AttributeNames=['ApproximateReceiveCount'],
+def queue_name():
+    return os.environ.get('RABBITMQ_QUEUE') or DEFAULT_QUEUE
+
+
+def _connection_parameters():
+    return pika.ConnectionParameters(
+        host=os.environ.get('RABBITMQ_HOST', 'localhost'),
+        port=int(os.environ.get('RABBITMQ_PORT', '5672')),
+        virtual_host=os.environ.get('RABBITMQ_VHOST', '/'),
+        credentials=pika.PlainCredentials(
+            _required_env('RABBITMQ_DEFAULT_USER'),
+            _required_env('RABBITMQ_DEFAULT_PASS'),
+        ),
+        # O processamento (PDF + Gemini) roda dentro do callback e bloqueia a thread que responde aos
+        # heartbeats. Com o padrão (60 s), um artigo lento faria o broker derrubar a conexão no meio do
+        # trabalho. Por isso o intervalo é alto.
+        heartbeat=600,
+        blocked_connection_timeout=300,
     )
-    return response.get('Messages', [])
+
+
+def declare_topology(channel):
+    """Fila principal (quorum, 3 entregas) + exchange e fila de mensagens mortas (DLQ). Idempotente."""
+    queue = queue_name()
+    dlx = f'{queue}.dlx'
+    dlq = f'{queue}.dlq'
+
+    channel.exchange_declare(exchange=dlx, exchange_type='direct', durable=True)
+    channel.queue_declare(queue=dlq, durable=True)
+    channel.queue_bind(queue=dlq, exchange=dlx, routing_key=queue)
+    channel.queue_declare(
+        queue=queue,
+        durable=True,
+        arguments={
+            'x-queue-type': 'quorum',
+            'x-delivery-limit': MAX_DELIVERIES,
+            'x-dead-letter-exchange': dlx,
+            'x-dead-letter-routing-key': queue,
+        },
+    )
 
 
 def extract_text(pdf_bytes):
@@ -157,7 +197,7 @@ def _invalidate_cache(article_id):
 
 
 def process(message):
-    """Processa uma mensagem; levanta exceção em falha para a SQS tentar novamente."""
+    """Processa uma mensagem ({'Body': <JSON>}); levanta exceção em falha para o chamador não confirmá-la."""
     payload = _decode_body(message['Body'])
     article_id = payload['article_id']
 
@@ -198,38 +238,64 @@ def process(message):
         raise
 
 
+def handle_delivery(channel, method, body):
+    """Trata uma entrega do RabbitMQ e responde ao broker:
+
+    - sucesso: `ack` (a mensagem sai da fila);
+    - mensagem inválida (JSON ruim, campo faltando): `nack` sem reenfileirar, vai direto para a DLQ,
+      porque tentar de novo não adianta;
+    - falha ao processar (Gemini, banco, MinIO...): `nack` com reenfileirar; depois de MAX_DELIVERIES
+      reentregas o próprio RabbitMQ manda a mensagem para a DLQ.
+    """
+    tag = method.delivery_tag
+    try:
+        payload = _decode_body(body)
+    except ValueError:
+        logger.exception('Mensagem inválida; enviada para a DLQ sem novas tentativas.')
+        channel.basic_nack(delivery_tag=tag, requeue=False)
+        return
+
+    try:
+        process({'Body': body})
+    except Exception:
+        logger.exception('Falha ao processar o artigo %s; a mensagem volta para a fila.', payload['article_id'])
+        channel.basic_nack(delivery_tag=tag, requeue=True)
+        return
+
+    channel.basic_ack(delivery_tag=tag)
+    logger.info('Artigo %s processado e mensagem confirmada.', payload['article_id'])
+
+
+def consume():
+    """Conecta, declara a fila e consome até a conexão cair (levanta AMQPError / OSError)."""
+    connection = pika.BlockingConnection(_connection_parameters())
+    try:
+        channel = connection.channel()
+        declare_topology(channel)
+        channel.basic_qos(prefetch_count=1)  # uma mensagem por vez: só recebe a próxima depois do ack
+        channel.basic_consume(
+            queue=queue_name(),
+            on_message_callback=lambda ch, method, properties, body: handle_delivery(ch, method, body),
+        )
+        logger.info('Worker iniciado; aguardando mensagens na fila %s.', queue_name())
+        channel.start_consuming()
+    finally:
+        if connection.is_open:
+            connection.close()
+
+
 def main():
-    """Consome mensagens continuamente e só as apaga depois do processamento."""
+    """Consome mensagens continuamente e só as confirma (ack) depois do processamento."""
     logging.basicConfig(
         level=os.environ.get('LOG_LEVEL', 'INFO').upper(),
         format='%(asctime)s %(levelname)s %(message)s',
     )
-    queue_url = _required_env('SQS_QUEUE_URL')
-    region = os.environ.get('AWS_REGION', 'us-east-1')
-    sqs = boto3.client('sqs', region_name=region)
-
-    logger.info('Worker iniciado; aguardando mensagens na fila SQS.')
     while True:
         try:
-            messages = receive_messages(sqs, queue_url)
-        except Exception:
-            logger.exception('Falha ao consultar a fila SQS.')
-            time.sleep(5)
-            continue
-
-        for message in messages:
-            receipt_handle = message.get('ReceiptHandle')
-            if not receipt_handle:
-                logger.error('Mensagem recebida sem ReceiptHandle; não é possível removê-la da fila.')
-                continue
-
-            try:
-                payload = _decode_body(message['Body'])
-                process(message)
-                sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
-                logger.info('Artigo %s processado e mensagem removida da fila.', payload['article_id'])
-            except Exception:
-                logger.exception('Falha ao processar mensagem; a SQS poderá entregá-la novamente.')
+            consume()
+        except (AMQPError, OSError):
+            logger.exception('Conexão com o RabbitMQ indisponível; nova tentativa em %s s.', RECONNECT_DELAY)
+            time.sleep(RECONNECT_DELAY)
 
 
 if __name__ == '__main__':

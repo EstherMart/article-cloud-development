@@ -17,7 +17,7 @@ if not DEBUG and SECRET_KEY == INSECURE_DEV_KEY:
 
 # Em produção, sem estas variáveis o código usaria recursos padrão que não são do projeto.
 if not DEBUG:
-    missing = [name for name in ('MINIO_ENDPOINT_URL', 'MINIO_ROOT_USER', 'MINIO_ROOT_PASSWORD', 'DYNAMODB_TABLE', 'SNS_TOPIC_ARN') if not os.environ.get(name)]
+    missing = [name for name in ('MINIO_ENDPOINT_URL', 'MINIO_ROOT_USER', 'MINIO_ROOT_PASSWORD', 'DYNAMODB_TABLE', 'RABBITMQ_HOST', 'RABBITMQ_DEFAULT_USER', 'RABBITMQ_DEFAULT_PASS') if not os.environ.get(name)]
     if missing:
         raise ImproperlyConfigured('Defina no .env: ' + ', '.join(missing))
 

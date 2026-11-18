@@ -21,14 +21,19 @@ class ApiTestCase(TestCase):
 
     def setUp(self):
         self.s3 = mock.Mock()
-        self.sns = mock.Mock()
         self.s3.generate_presigned_url.return_value = 'https://s3.exemplo/arquivo.pdf'
-        self.start_patch('articles.services.s3.client', return_value=self.s3)
-        self.start_patch('articles.services.messaging.client', return_value=self.sns)
+        self.start_patch('articles.services.minIO.minio_client', return_value=self.s3)
+        # RabbitMQ simulado: self.channel recebe o basic_publish do backend.
+        self.rabbit_connection = mock.Mock()
+        self.channel = self.rabbit_connection.channel.return_value
+        self.start_patch('articles.services.messaging.pika.BlockingConnection', return_value=self.rabbit_connection)
         self.start_patch('articles.views.log_action')
         self.start_patch('articles.views.invalidate_article')
         self.start_patch('articles.views.get_or_set', side_effect=lambda key, loader, ttl=None: loader())
-        env_patcher = mock.patch.dict('os.environ', {'SNS_TOPIC_ARN': 'arn:aws:sns:us-east-1:123456789012:artigos'})
+        env_patcher = mock.patch.dict('os.environ', {
+            'RABBITMQ_HOST': 'rabbitmq', 'RABBITMQ_DEFAULT_USER': 'teste', 'RABBITMQ_DEFAULT_PASS': 'senha',
+            'RABBITMQ_QUEUE': 'artigos.criados',
+        })
         env_patcher.start()
         self.addCleanup(env_patcher.stop)
         self.login_as(self.user)

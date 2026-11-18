@@ -1,6 +1,6 @@
 # Backend (API Django)
 
-API REST em Django. Valida o pedido, grava no RDS, envia o PDF ao S3, registra o log no DynamoDB, usa o cache Redis e publica o evento no SNS para o worker.
+API REST em Django. Valida o pedido, grava no Postgres, envia o PDF ao MinIO, registra o log no DynamoDB, usa o cache Redis e publica o evento no RabbitMQ para o worker.
 
 ## Estrutura
 
@@ -21,7 +21,7 @@ backend/
     │   ├── s3.py             PDF
     │   ├── dynamo_log.py     log das ações
     │   ├── cache.py          Redis
-    │   └── messaging.py      SNS
+    │   └── messaging.py      RabbitMQ (publica o evento de novo artigo)
     ├── demo/             dados e gerador de PDFs da demonstração
     ├── management/       comando carregar_demo_pdfs
     └── tests/            unit/, integration/ e fixtures/
@@ -113,9 +113,10 @@ Copie `.env.example` para `.env` (o `.env` não vai para o git).
 | `AWS_REGION` | Região dos clientes boto3 |
 | `S3_BUCKET` | Bucket dos PDFs |
 | `DYNAMODB_TABLE` | Tabela de logs (padrão `logs_crud`) |
-| `SNS_TOPIC_ARN` | Tópico do evento de novo artigo |
-| `SQS_QUEUE_URL` | Fila (usada pelo worker) |
+| `RABBITMQ_HOST`, `RABBITMQ_PORT` | Endereço do broker (no compose, `rabbitmq` e `5672`) |
+| `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS` | Login do broker |
+| `RABBITMQ_QUEUE` | Fila do evento de novo artigo (padrão `artigos.criados`) |
 | `REDIS_URL` | Cache, formato `redis://<endpoint>:6379/0` |
 | `SEED_DEMO_DATA`, `DEMO_USER_PASSWORD` | Artigos de demonstração e senha opcional do usuário `demo` |
 
-Em produção (`DJANGO_DEBUG=False`) o Django não sobe sem `DJANGO_SECRET_KEY`, `S3_BUCKET`, `DYNAMODB_TABLE` e `SNS_TOPIC_ARN`. Na EC2 use a IAM Role (LabRole) e deixe as chaves AWS fora do `.env`.
+Em produção (`DJANGO_DEBUG=False`) o Django não sobe sem `DJANGO_SECRET_KEY`, `MINIO_ENDPOINT_URL`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `DYNAMODB_TABLE`, `RABBITMQ_HOST`, `RABBITMQ_DEFAULT_USER` e `RABBITMQ_DEFAULT_PASS`. Na EC2 use a IAM Role (LabRole) e deixe as chaves AWS fora do `.env`.

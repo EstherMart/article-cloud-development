@@ -69,11 +69,11 @@ def discard_pdf(s3_key):
 
 
 def start_processing(article):
-    """Publica o evento no SNS. Se falhar, marca o artigo como ERRO e devolve False."""
+    """Publica o evento no RabbitMQ. Se falhar, marca o artigo como ERRO e devolve False."""
     try:
         publish_article_created(article.id, article.s3_key, settings.MINIO_BUCKET)
-    except (BotoCoreError, ClientError, RuntimeError):
-        logger.exception('Não foi possível publicar o artigo %s no SNS.', article.id)
+    except RuntimeError:  # inclui MessagingError (broker fora do ar) e configuração ausente
+        logger.exception('Não foi possível publicar o artigo %s no RabbitMQ.', article.id)
         status = Article.ProcessingStatus.ERRO
         ok = False
     else:

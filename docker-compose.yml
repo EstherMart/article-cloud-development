@@ -65,6 +65,12 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: artigos-rabbitmq
+    environment:
+      # Sem isto só existe o usuário "guest", que o RabbitMQ restringe a conexões locais.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -101,6 +107,7 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  rabbitmq_data:
 
 networks:
   artigos-network:

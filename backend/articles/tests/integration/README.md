@@ -4,7 +4,7 @@ Os testes de `unit/` simulam a AWS. Estes usam os recursos reais e pegam o que a
 
 Três tipos:
 
-- **Por serviço** (`test_rds.py`, `test_s3.py`, `test_dynamodb.py`, `test_redis.py`, `test_sns_sqs.py`): o código do projeto fala com o serviço de verdade. Criam os próprios dados e apagam no fim.
+- **Por serviço** (`test_rds.py`, `test_s3.py`, `test_dynamodb.py`, `test_redis.py`): o código do projeto fala com o serviço de verdade. Criam os próprios dados e apagam no fim.
 - **Da configuração** (`test_especificacao.py`): só lê. Confere que cada recurso criado tem a configuração que a aplicação espera, requisito por requisito, incluindo o ALB e o Auto Scaling.
 - **Ponta a ponta** (`test_pipeline_e2e.py`): cadastro, S3, DynamoDB, worker, cache, download e DELETE, pela API.
 
@@ -27,7 +27,7 @@ Sem `RUN_AWS_INTEGRATION=1`, tudo é pulado (`skipped`) e nada é cobrado. Cada 
 | `test_rds.py` | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | EC2, ou sua máquina com o IP liberado no `sg-rds` |
 | `test_s3.py` | `S3_BUCKET` | Qualquer lugar com credenciais |
 | `test_dynamodb.py` | `DYNAMODB_TABLE` | Qualquer lugar com credenciais |
-| `test_sns_sqs.py` | `SNS_TOPIC_ARN`, `SQS_QUEUE_URL` (e `SQS_DLQ_URL` no teste lento da DLQ). Pare o worker antes | Qualquer lugar |
+| `test_rabbitmq.py` | Com o RabbitMQ no ar: `RUN_RABBITMQ_INTEGRATION=1`, `RABBITMQ_HOST`, `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS`. Não usa AWS e tem o próprio liga/desliga; usa fila temporária | Onde o broker for alcançável |
 | `test_redis.py` | `REDIS_URL` | **Só da EC2** (o Redis fica dentro da VPC) |
 | `test_pipeline_e2e.py` | `API_BASE_URL`, `S3_BUCKET`, `DYNAMODB_TABLE`, `REDIS_URL` (e `E2E_USERNAME`, `E2E_PASSWORD`) | EC2, com API e worker no ar |
 | `test_especificacao.py` | ver a tabela abaixo | Qualquer lugar com credenciais (o do Redis, só da EC2) |
