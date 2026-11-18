@@ -17,7 +17,7 @@ Alunos e pesquisadores cadastram trabalhos (título, autores, resumo, palavras-c
 | S3 | PDFs (bucket privado, download por URL pré-assinada) e as telas estáticas (outro bucket) |
 | ElastiCache (Redis) | Cache de consultas frequentes: metadados, listas e buscas. Nunca guarda PDF |
 | DynamoDB | Log de cada criação, atualização e exclusão, com ação, dados e hora |
-| SNS e SQS | Avisam o worker de que há um artigo novo, sem a API esperar (com fila de descarte) |
+| SNS e SQS (trabalho 1) / RabbitMQ (trabalho 2) | Avisam o worker de que há um artigo novo, sem a API esperar (com fila de descarte). No trabalho 2 o RabbitMQ substitui o SNS e o SQS: [docs/docker/rabbitmq.md](docs/docker/rabbitmq.md) |
 
 ## Como funciona
 

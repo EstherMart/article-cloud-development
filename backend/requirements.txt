@@ -4,3 +4,4 @@ boto3
 redis
 django-cors-headers
 gunicorn
+pika<2

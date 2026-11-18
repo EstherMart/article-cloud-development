@@ -54,7 +54,7 @@ class ProcessarMensagemTests(unittest.TestCase):
             '_set_status': mock.DEFAULT, '_get_abstract': mock.DEFAULT,
             'translate': mock.DEFAULT, 'save_result': mock.DEFAULT, '_invalidate_cache': mock.DEFAULT,
         }
-        with mock.patch.multiple(worker, **patches) as mocks, mock.patch.object(worker.boto3, 'client', return_value=s3):
+        with mock.patch.multiple(worker, **patches) as mocks, mock.patch.object(worker, '_minio_client', return_value=s3):
             mocks['_get_abstract'].return_value = resumo
             if isinstance(traducao, Exception):
                 mocks['translate'].side_effect = traducao
@@ -101,7 +101,7 @@ class ProcessarMensagemTests(unittest.TestCase):
 
     def test_pdf_corrompido_termina_em_erro_e_a_mensagem_volta_para_a_fila(self):
         mocks, erro = self.processar('corrompido_truncado.pdf', 'Resumo digitado.')
-        self.assertIsNotNone(erro)  # a exceção sobe: main() não apaga a mensagem
+        self.assertIsNotNone(erro)  # a exceção sobe: handle_delivery não faz ack
         mocks['_set_status'].assert_any_call(7, 'ERRO')
         mocks['save_result'].assert_not_called()
 
@@ -114,11 +114,15 @@ class ProcessarMensagemTests(unittest.TestCase):
 
 class MensagemETraducaoTests(unittest.TestCase):
 
-    def test_aceita_entrega_bruta_e_envelope_do_sns(self):
-        bruto = {'article_id': 3, 's3_key': 'artigos/3.pdf', 'bucket': 'b'}
-        envelope = {'Type': 'Notification', 'Message': json.dumps(bruto)}
-        self.assertEqual(worker._decode_body(json.dumps(bruto))['article_id'], 3)
-        self.assertEqual(worker._decode_body(json.dumps(envelope))['article_id'], 3)
+    def test_aceita_o_json_do_evento_em_texto_ou_bytes(self):
+        evento = {'article_id': 3, 's3_key': 'artigos/3.pdf', 'bucket': 'b', 'event': 'ARTICLE_CREATED'}
+        self.assertEqual(worker._decode_body(json.dumps(evento))['article_id'], 3)
+        self.assertEqual(worker._decode_body(json.dumps(evento).encode())['article_id'], 3)  # o pika entrega bytes
+
+    def test_json_invalido_e_recusado(self):
+        for corpo in ('isto não é json', b'\xff\xfe', '[1, 2]', '"texto"'):
+            with self.subTest(corpo=corpo), self.assertRaises(ValueError):
+                worker._decode_body(corpo)
 
     def test_mensagem_sem_campo_obrigatorio_e_recusada(self):
         for corpo in ({'article_id': 0, 's3_key': 'k', 'bucket': 'b'},
@@ -132,6 +136,74 @@ class MensagemETraducaoTests(unittest.TestCase):
         with mock.patch.object(worker.genai, 'Client') as cliente:
             self.assertEqual(worker.translate('   '), '')
         cliente.assert_not_called()
+
+
+EVENTO = json.dumps({'article_id': 7, 's3_key': 'artigos/7.pdf', 'bucket': 'artigos', 'event': 'ARTICLE_CREATED'}).encode()
+
+
+class EntregaDoRabbitMQTests(unittest.TestCase):
+    """handle_delivery(): como o worker responde ao broker (ack, nack para reentrega ou nack para a DLQ)."""
+
+    def entregar(self, corpo=EVENTO, erro=None):
+        canal = mock.Mock()
+        metodo = mock.Mock(delivery_tag=42)
+        with mock.patch.object(worker, 'process', side_effect=erro) as process:
+            worker.handle_delivery(canal, metodo, corpo)
+        return canal, process
+
+    def test_sucesso_confirma_com_ack(self):
+        canal, process = self.entregar()
+        process.assert_called_once_with({'Body': EVENTO})
+        canal.basic_ack.assert_called_once_with(delivery_tag=42)
+        canal.basic_nack.assert_not_called()
+
+    def test_falha_ao_processar_devolve_para_a_fila(self):
+        canal, _ = self.entregar(erro=RuntimeError('Gemini fora do ar'))
+        canal.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
+        canal.basic_ack.assert_not_called()
+
+    def test_mensagem_invalida_vai_para_a_dlq_sem_tentar_processar(self):
+        for corpo in (b'nao e json', json.dumps({'article_id': 0, 's3_key': 'k', 'bucket': 'b'}).encode()):
+            with self.subTest(corpo=corpo):
+                canal, process = self.entregar(corpo=corpo)
+                canal.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+                canal.basic_ack.assert_not_called()
+                process.assert_not_called()
+
+
+class ConsumoTests(unittest.TestCase):
+
+    ENV = {'RABBITMQ_HOST': 'rabbitmq', 'RABBITMQ_DEFAULT_USER': 'u', 'RABBITMQ_DEFAULT_PASS': 'p',
+           'RABBITMQ_QUEUE': 'fila.teste'}
+
+    def test_consume_declara_a_fila_limita_a_uma_mensagem_e_so_confirma_manualmente(self):
+        conexao = mock.Mock()
+        canal = conexao.channel.return_value
+        with mock.patch.dict('os.environ', self.ENV), \
+                mock.patch.object(worker.pika, 'BlockingConnection', return_value=conexao):
+            worker.consume()
+
+        canal.queue_declare.assert_any_call(
+            queue='fila.teste', durable=True,
+            arguments={'x-queue-type': 'quorum', 'x-delivery-limit': 3,
+                       'x-dead-letter-exchange': 'fila.teste.dlx', 'x-dead-letter-routing-key': 'fila.teste'})
+        canal.basic_qos.assert_called_once_with(prefetch_count=1)
+        self.assertEqual(canal.basic_consume.call_args.kwargs['queue'], 'fila.teste')
+        self.assertNotIn('auto_ack', canal.basic_consume.call_args.kwargs)  # ack manual
+        canal.start_consuming.assert_called_once_with()
+
+    def test_heartbeat_alto_para_nao_cair_durante_o_processamento(self):
+        with mock.patch.dict('os.environ', self.ENV):
+            self.assertGreaterEqual(worker._connection_parameters().heartbeat, 600)
+
+    def test_main_reconecta_quando_o_broker_cai(self):
+        tentativas = [worker.pika.exceptions.AMQPConnectionError('caiu'), OSError('rede'), KeyboardInterrupt()]
+        with mock.patch.object(worker, 'consume', side_effect=tentativas) as consume, \
+                mock.patch.object(worker.time, 'sleep') as dormir:
+            with self.assertRaises(KeyboardInterrupt):
+                worker.main()
+        self.assertEqual(consume.call_count, 3)
+        self.assertEqual(dormir.call_count, 2)
 
 
 if __name__ == '__main__':

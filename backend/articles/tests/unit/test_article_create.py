@@ -2,6 +2,9 @@ from django.contrib.auth.models import User
 from botocore.exceptions import BotoCoreError
 from django.core.files.uploadedfile import SimpleUploadedFile
 import json
+from unittest import mock
+
+import pika.exceptions
 
 from articles.models import Article
 from django.conf import settings
@@ -43,22 +46,22 @@ class ArticleCreateTests(ApiTestCase):
             f"artigos/{article['id']}.pdf",
         )
 
-    def test_publica_evento_sns_depois_de_salvar_artigo_e_pdf(self):
+    def test_publica_evento_no_rabbitmq_depois_de_salvar_artigo_e_pdf(self):
         response = self.post_article(abstract='Resumo de teste')
         article = response.json()['article']
 
         self.assertEqual(response.status_code, 201)
-        self.sns.publish.assert_called_once()
-        kwargs = self.sns.publish.call_args.kwargs
-        self.assertEqual(kwargs['TopicArn'], 'arn:aws:sns:us-east-1:123456789012:artigos')
-        event = json.loads(kwargs['Message'])
+        self.channel.basic_publish.assert_called_once()
+        kwargs = self.channel.basic_publish.call_args.kwargs
+        self.assertEqual(kwargs['routing_key'], 'artigos.criados')
+        event = json.loads(kwargs['body'])
         self.assertEqual(event['article_id'], article['id'])
         self.assertEqual(event['s3_key'], Article.objects.get(id=article['id']).s3_key)
-        self.assertEqual(event['bucket'], settings.AWS_STORAGE_BUCKET_NAME)
+        self.assertEqual(event['bucket'], settings.MINIO_BUCKET)
         self.assertEqual(event['event'], 'ARTICLE_CREATED')
 
     def test_falha_ao_publicar_marca_artigo_como_erro_e_nao_retorna_sucesso(self):
-        self.sns.publish.side_effect = RuntimeError('SNS indisponível')
+        self.channel.basic_publish.side_effect = pika.exceptions.AMQPConnectionError('RabbitMQ indisponível')
 
         response = self.post_article()
 
@@ -67,6 +70,14 @@ class ArticleCreateTests(ApiTestCase):
         self.assertIn('erro', response.json())
         article = Article.objects.get()
         self.assertEqual(article.processing_status, Article.ProcessingStatus.ERRO)
+
+    def test_broker_inalcancavel_marca_artigo_como_erro(self):
+        with mock.patch('articles.services.messaging.pika.BlockingConnection',
+                        side_effect=pika.exceptions.AMQPConnectionError('sem rota')):
+            response = self.post_article()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(Article.objects.get().processing_status, Article.ProcessingStatus.ERRO)
 
     def test_titulo_duplicado_retorna_409(self):
         self.post_article()
@@ -91,17 +102,17 @@ class ArticleReprocessTests(ApiTestCase):
     """POST /articles/<id>/reprocess/"""
 
     def article_em_erro(self):
-        self.sns.publish.side_effect = RuntimeError('SNS indisponível')
+        self.channel.basic_publish.side_effect = pika.exceptions.AMQPConnectionError('RabbitMQ indisponível')
         article_id = self.post_article().json()['article_id']
-        self.sns.publish.side_effect = None
-        self.sns.publish.reset_mock()
+        self.channel.basic_publish.side_effect = None
+        self.channel.basic_publish.reset_mock()
         return article_id
 
     def test_reenvia_evento_e_volta_para_pendente(self):
         article_id = self.article_em_erro()
         response = self.client.post(f'/articles/{article_id}/reprocess/')
         self.assertEqual(response.status_code, 200)
-        self.sns.publish.assert_called_once()
+        self.channel.basic_publish.assert_called_once()
         self.assertEqual(Article.objects.get(id=article_id).processing_status, 'PENDENTE')
 
     def test_artigo_que_nao_esta_em_erro_retorna_409(self):
