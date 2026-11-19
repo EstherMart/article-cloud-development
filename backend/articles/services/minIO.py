@@ -4,6 +4,7 @@
 from .aws import minio_client
 from django.conf import settings
 from botocore.exceptions import ClientError
+import os
 
 KEY_TEMPLATE = 'artigos/{article_id}.pdf'
 BUCKET_READY = False 
@@ -46,14 +47,19 @@ def upload_pdf(article_id, file_obj):
 
 
 def presigned_url(s3_key, expires_in=300):
-    return minio_client(public = True).generate_presigned_url(
+    url = minio_client(public=True).generate_presigned_url(
         'get_object',
         Params={
             'Bucket': settings.MINIO_BUCKET,
             'Key': s3_key
         },
-        ExpiresIn = expires_in
+        ExpiresIn=expires_in
     )
+    
+    internal_url = os.getenv('MINIO_ENDPOINT_URL', 'http://minio:9000')
+    public_url = os.getenv('MINIO_PUBLIC_ENDPOINT_URL', internal_url)
+    
+    return url.replace(internal_url, public_url)
 
 
 def delete_pdf(s3_key):

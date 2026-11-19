@@ -1,0 +1,33 @@
+name: Deploy da versão
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar .env
+        run: |
+          printf "%s\n" "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Dropar containers antigos
+        run: docker compose down
+
+      - name: Build da aplicação
+        run: docker compose build
+
+      - name: Subindo os containers
+        run: docker compose up -d
+
+      - name: Django migrations
+        run: |
+          sleep 5
+          docker compose exec -T backend python manage.py migrate
