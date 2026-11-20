@@ -147,7 +147,7 @@ def _is_retryable_gemini_error(exc):
     wait=wait_exponential(
         multiplier=2,
         min=2,
-        max=30
+        max=10
     ),
     stop=stop_after_attempt(5),
     before_sleep=before_sleep_log(logger, logging.WARNING),
