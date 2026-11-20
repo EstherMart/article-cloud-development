@@ -19,6 +19,16 @@ from pypdf import PdfReader
 from botocore.config import Config
 from pika.exceptions import AMQPError
 
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception,
+    before_sleep_log,
+)
+
+from google.genai import errors
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_QUEUE = 'artigos.criados'
@@ -117,12 +127,39 @@ def extract_text(pdf_bytes):
     return '\n'.join(page.extract_text() or '' for page in reader.pages).strip()
 
 
+
+def _is_retryable_gemini_error(exc):
+    if not isinstance(exc, errors.APIError):
+        return False
+
+    status = getattr(exc, 'code', None)
+
+    if status is None:
+        status = getattr(exc, 'status_code', None)
+
+    return status == 429 or (
+        isinstance(status, int) and status >= 500
+    )
+
+
+@retry(
+    retry=retry_if_exception(_is_retryable_gemini_error),
+    wait=wait_exponential(
+        multiplier=2,
+        min=2,
+        max=30
+    ),
+    stop=stop_after_attempt(5),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True
+)
 def translate(text, target='en'):
-    """Traduz texto com Gemini. Configure GEMINI_API_KEY e GEMINI_MODEL."""
+
     if not text.strip():
         return ''
 
     client = genai.Client(api_key=_required_env('GEMINI_API_KEY'))
+
     response = client.models.generate_content(
         model=_required_env('GEMINI_MODEL'),
         contents=(
@@ -136,6 +173,7 @@ def translate(text, target='en'):
         raise RuntimeError('O Gemini não retornou uma tradução.')
 
     return response.text.strip()
+
 
 
 def save_result(article_id, translated_abstract, status):
